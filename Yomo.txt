@@ -187,11 +187,11 @@ RunService.RenderStepped:Connect(function()
         HeadLockCircle.Visible = false
     end
 end)
-
 local function c()
     return _G
 end
-local oldfire;
+
+local oldfire
 oldfire = hookfunction(ReplicatedStorage.Remotes.Send.FireServer, function(self, ...)
     local args = {...}
 
@@ -201,17 +201,22 @@ oldfire = hookfunction(ReplicatedStorage.Remotes.Send.FireServer, function(self,
             local hrp = target.Character:FindFirstChild("HumanoidRootPart")
             local head = target.Character:FindFirstChild("Head")
             if hrp and head then
-                local origin = RootPart.Position
-                local targetPos = target.Character:FindFirstChild(c().AimPart or "Head") or head
-                local velocity = target.Character:FindFirstChild(c().AimPart or "Head").AssemblyLinearVelocity
-                local predict = targetPos.Position + (velocity * Sf:GetPing() * 1.15)
+                -- ใช้ HumanoidRootPart ของเราแทน RootPart
+                local origin = LocalPlayer.Character.HumanoidRootPart.Position
 
+                -- Aim part
+                local targetPos = target.Character:FindFirstChild(c().AimPart or "Head") or head
+                local velocity = targetPos.AssemblyLinearVelocity
+                local predict = targetPos.Position + (velocity * getPing() * 1.15)
+
+                -- ถ้าไม่เปิด WallShoot ให้เล็งไปที่ predict
                 if not c().EnabledWallShoot then
                     args[4] = CFrame.new(origin, predict)
                 else
                     args[4] = CFrame.new(math.huge, math.huge, math.huge)
                 end
 
+                -- แก้ args[5] ให้ชี้ไปที่เป้าหมาย
                 if args[5] then
                     for _, v in get(args[5]) do
                         for _, x in get(v) do
@@ -222,6 +227,7 @@ oldfire = hookfunction(ReplicatedStorage.Remotes.Send.FireServer, function(self,
                     end
                 end
 
+                -- สร้าง tracer
                 pcall(function()
                     local dir = targetPos.Position - origin
                     local distance = dir.Magnitude
@@ -236,23 +242,6 @@ oldfire = hookfunction(ReplicatedStorage.Remotes.Send.FireServer, function(self,
                         tracer.Parent = workspace
                         Debris:AddItem(tracer, 1.5)
                     end
-                    -- if target.Character:FindFirstChild('Humanoid') then 
-                    --     local oldhealth = target.Character:FindFirstChild('Humanoid').Health 
-                    --     task.spawn(function()
-                    --         if target.Character:FindFirstChild('Humanoid').Health < oldhealth then 
-                    --             local checker = Instance.new('Part',workspace)
-                    --             checker.Size = Vector3.new(30,30,30)
-                    --             checker.Shape = Enum.PartType.Ball
-                    --             checker.CFrame = target.Character:FindFirstChild(c().AimPart).CFrame or target.Character:FindFirstChild("Head").CFrame
-                    --             checker.Material = Enum.Material.Neon
-                    --             checker.Transparency = 0.4
-                    --             checker.Color = Color3.fromRGB(255,0,0)
-                    --             checker.CanCollide = false 
-                    --             checker.Anchored = true 
-                    --             Debris:AddItem(checker,1.2)
-                    --         end
-                    --     end)
-                    -- end
                 end)
             end
         end
