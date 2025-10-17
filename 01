@@ -509,6 +509,8 @@ Tab:Toggle({
     end
 })
 
+Tab:Section({Title = "ANTI AIMBOT:"})
+
 Tab:Toggle({
     Title = "Enable Anti-Aimbot",
     Default = true,
