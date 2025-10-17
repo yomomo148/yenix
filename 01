@@ -519,6 +519,15 @@ Tab:Toggle({
     end
 })
 
+Tab:Section({Title = "INVENTORY VIEWER"})
+
+Tab:Button({
+    Title = "Toggle Inventory Viewer",
+    Callback = function()
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
+})
+
 local AntiAimEnabled = true
 local neckMotor, originalNeckC0
 local fakeHead
@@ -598,7 +607,7 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "InventoryViewerGUI"
 ScreenGui.Parent = PlayerGui
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = true -- เปิดตอนแรก
+ScreenGui.Enabled = false -- เริ่มต้นปิดไว้ก่อน
 
 -- Frame แถบรายชื่อ
 local listFrame = Instance.new("Frame", ScreenGui)
@@ -663,16 +672,102 @@ invList.ScrollBarThickness = 6
 invList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 Instance.new("UIListLayout", invList).Padding = UDim.new(0, 5)
 
--- (… โค้ด showInventory, createPlayerButton, Billboard, Alert ยังอยู่ตามเดิม …)
-
 -- ==========================
--- ปุ่มเปิด/ปิด Inventory Viewer ใน Combat Tab (WindUI)
+-- ฟังก์ชันสำหรับโชว์ inventory ของ player
 -- ==========================
-Tab:Section({Title = "INVENTORY VIEWER"})
+local function showInventory(player)
+    invTitle.Text = "Inventory: " .. player.Name
+    invFrame.Visible = true
 
-Tab:Button({
-    Title = "Toggle Inventory Viewer",
-    Callback = function()
-        ScreenGui.Enabled = not ScreenGui.Enabled
+    for _, c in ipairs(invList:GetChildren()) do
+        if not c:IsA("UIListLayout") then
+            c:Destroy()
+        end
     end
-})
+
+    local tools = {}
+    if player:FindFirstChild("Backpack") then
+        for _, tool in ipairs(player.Backpack:GetChildren()) do
+            if tool:IsA("Tool") then table.insert(tools, tool) end
+        end
+    end
+    if player.Character then
+        for _, tool in ipairs(player.Character:GetChildren()) do
+            if tool:IsA("Tool") then table.insert(tools, tool) end
+        end
+    end
+
+    for _, tool in ipairs(tools) do
+        local frame = Instance.new("Frame", invList)
+        frame.Size = UDim2.new(1, -10, 0, 30)
+        frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        frame.BorderSizePixel = 0
+        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 4)
+
+        local name = Instance.new("TextLabel", frame)
+        name.Size = UDim2.new(1, -10, 1, 0)
+        name.Position = UDim2.new(0, 5, 0, 0)
+        name.TextColor3 = Color3.new(1, 1, 1)
+        name.Text = tool.Name
+        name.Font = Enum.Font.Gotham
+        name.TextSize = 14
+        name.TextXAlignment = Enum.TextXAlignment.Left
+        name.BackgroundTransparency = 1
+    end
+end
+
+-- ==========================
+-- ปุ่ม Player ใน list
+-- ==========================
+local playerButtons = {}
+
+local function createPlayerButton(player)
+    local button = Instance.new("TextButton", playerList)
+    button.Size = UDim2.new(1, -10, 0, 28)
+    button.Text = player.Name
+    button.TextScaled = true
+    button.Font = Enum.Font.GothamBold
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+
+    button.MouseButton1Click:Connect(function()
+        showInventory(player)
+    end)
+
+    playerButtons[player] = button
+end
+
+-- ==========================
+-- สร้างปุ่ม player เริ่มต้น
+-- ==========================
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then
+        createPlayerButton(p)
+    end
+end
+
+Players.PlayerAdded:Connect(function(p)
+    if p ~= LocalPlayer then
+        createPlayerButton(p)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    if playerButtons[p] then
+        playerButtons[p]:Destroy()
+        playerButtons[p] = nil
+    end
+end)
+
+resetButton.MouseButton1Click:Connect(function()
+    for _, btn in pairs(playerButtons) do
+        btn:Destroy()
+    end
+    playerButtons = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            createPlayerButton(p)
+        end
+    end
+end)
