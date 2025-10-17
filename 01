@@ -1,0 +1,738 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
+local ContextActionService = game:GetService("ContextActionService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Camera = Workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+local Player = Players.LocalPlayer
+
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+local WindUI = nil
+pcall(function()
+    WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+end)
+
+local Window
+if WindUI then
+    Window = WindUI:CreateWindow({
+        Title = "yenix  🔫 | Test ",
+        Icon = "rbxassetid://14634623085",
+        Author = "https://discord.gg/RCgqfsCKB4",
+        Folder = "MOKUN NEXUS",
+        Size = UDim2.fromOffset(400, 200),
+        Theme = "Dark",
+        Transparent = true,
+        Resizable = true,
+        KeyCode = Enum.KeyCode.G
+    })
+else
+    Window = { 
+        Tab = function(_) 
+            return { 
+                Section = function() end, 
+                Toggle = function() end, 
+                Slider = function() end, 
+                Button = function() end, 
+                Dropdown = function() return {} end, 
+                Divider = function() end 
+            } 
+        end 
+    }
+end
+
+if WindUI and Window then
+    Window:EditOpenButton({
+        Icon = "rbxassetid://14634623085",
+        CornerRadius = UDim.new(0, 100),
+        StrokeThickness = 2,
+        Color = ColorSequence.new(Color3.fromHSV(0, 1, 1), Color3.fromHSV(0.1, 1, 1)),
+        OnlyMobile = false,
+        Enabled = true,
+        Draggable = true,
+        Size = UDim2.fromOffset(60, 60)
+    })
+end
+
+-- G Key
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.G and WindUI and Window then
+        if Window.Toggle then
+            Window:Toggle()
+        elseif Window.SetVisible then
+            Window:SetVisible(not Window.Visible)
+        end
+    end
+end)
+
+local SilentAimEnabled = false
+local FOVRadius = 120
+local CurrentTarget = nil
+local SilentFOVCircle
+
+if not isMobile then
+    SilentFOVCircle = Drawing.new("Circle")
+    SilentFOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Changed to pure white
+    SilentFOVCircle.Thickness = 1
+    SilentFOVCircle.NumSides = 64
+    SilentFOVCircle.Filled = false
+    SilentFOVCircle.Transparency = 1
+    SilentFOVCircle.Radius = FOVRadius
+    SilentFOVCircle.Visible = false
+else
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "MobileFOV"
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    SilentFOVCircle = Instance.new("Frame")
+    SilentFOVCircle.Size = UDim2.fromOffset(FOVRadius*2, FOVRadius*2)
+    SilentFOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+    SilentFOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+    SilentFOVCircle.BackgroundTransparency = 1
+
+    local circleUI = Instance.new("UICorner")
+    circleUI.CornerRadius = UDim.new(1, 0)
+    circleUI.Parent = SilentFOVCircle
+
+    local border = Instance.new("UIStroke")
+    border.Color = Color3.fromRGB(255, 255, 255) -- Changed to pure white
+    border.Thickness = 1 -- Thinner stroke for cleaner look matching PC
+    border.Transparency = 0
+    border.Parent = SilentFOVCircle
+
+    SilentFOVCircle.Parent = ScreenGui
+end
+
+local Tracer = Drawing.new("Line")
+Tracer.Thickness = 1
+Tracer.Color = Color3.fromRGB(255, 50, 50) -- Reddish-pink, leaning towards red
+Tracer.Transparency = 1
+Tracer.Visible = false
+
+local espPlayers = {}
+local boxESPEnabled = false
+local nameESPEnabled = false
+local distanceESPEnabled = false
+local healthESPEnabled = false
+local highlightEnabled = false
+local highlights = {}
+
+-- ตัวแปรต้องประกาศก่อน
+local walkSpeedEnabled = false
+local speedValue = 0.05
+local FlyEnabled = false
+local flying = false
+local isFlyingUp = false
+local floatPower = 40
+local fastFinishEnabled = false
+local teleportActive = false
+local featureEnabled = false
+local lockedY = nil
+local maxHeight = 10
+local startY = nil
+local hookEnabled = false
+local moveConnection = nil
+local SelectedPlayer = nil
+local Active = false
+local BringConnection
+local holdTime = 0.85
+local scanInterval = 1
+local fastFinishEnabled = false
+local flickering = false
+local undergroundBaseCFrame = nil
+local CharModule = require(game.ReplicatedStorage.Modules.Core.Char)
+local DROP_DEPTH = -25     -- ลงใต้พื้น
+local FLICKER_DISTANCE = 2 -- การขยับขึ้นลงเล็กน้
+local MOVE_RADIUS = 30      -- เคลื่อนที่สุ่มในรัศมี
+local FLICKER_RATE = 0     -- ความเร็วการวาร์ป
+getgenv().Sky = false          -- เปิด/ปิดฟีเจอร์
+getgenv().SkyAmount = 1500      -- ความแรงของการสั่นรอบวง
+local AutoSkipEnabled = false
+
+local Remote
+pcall(function()
+    Remote = ReplicatedStorage:WaitForChild("Remotes", 5):WaitForChild("Send", 5)
+end)
+
+local function getPing()
+    local stats = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("NetworkStats")
+    if stats then
+        local pingText = stats:FindFirstChild("PingLabel")
+        if pingText and typeof(pingText.Text) == "string" then
+            local ping = tonumber(pingText.Text:match("%d+"))
+            return ping and ping / 1000 or 0.2
+        end
+    end
+    return 0.2
+end
+
+local function getClosestTarget()
+    local closest = nil
+    local shortestDistance = math.huge
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("HumanoidRootPart") then
+            local head = player.Character.Head
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then -- Check if target is alive
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local screenPos = Vector2.new(pos.X, pos.Y)
+                    local distFromCenter = (screenPos - center).Magnitude
+                    if distFromCenter <= FOVRadius then
+                        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local velocity = hrp.Velocity or Vector3.zero
+                            local toTarget = (head.Position - Camera.CFrame.Position).Unit
+                            local forward = Camera.CFrame.LookVector
+                            local dot = forward:Dot(toTarget)
+                            if dot > 0.5 then
+                                local distance3D = (head.Position - (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head.Position or Camera.CFrame.Position)).Magnitude
+                                if distance3D < shortestDistance then
+                                    shortestDistance = distance3D
+                                    closest = player
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function predictPosition(head, hrp)
+    local ping = getPing()
+    local velocity = hrp and hrp.Velocity or Vector3.zero
+    return head.Position + (velocity * ping * 1.15)
+end
+
+local function isBehindWall(startPos, endPos)
+    if not startPos or not endPos then return false end
+    local ray = Ray.new(startPos, endPos - startPos)
+    local ignoreList = {}
+    if LocalPlayer.Character then table.insert(ignoreList, LocalPlayer.Character) end
+    if CurrentTarget and CurrentTarget.Character then table.insert(ignoreList, CurrentTarget.Character) end
+    local hit = Workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+    return hit ~= nil
+end
+
+local function setupCharacter(char)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid")
+    HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+
+    if moveConnection then
+        pcall(function() moveConnection:Disconnect() end)
+    end
+
+    moveConnection = RunService.RenderStepped:Connect(function()
+        if walkSpeedEnabled and Humanoid and HumanoidRootPart then
+            if Humanoid.MoveDirection.Magnitude > 0 then
+                HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (Humanoid.MoveDirection.Unit * speedValue)
+            end
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+if LocalPlayer.Character then
+    setupCharacter(LocalPlayer.Character)
+end
+
+RunService.RenderStepped:Connect(function()
+    pcall(function()
+        -- Update FOV Circle
+        if SilentFOVCircle then
+            SilentFOVCircle.Visible = SilentAimEnabled or SilentAimAttachEnabled
+            if isMobile then
+                SilentFOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+                SilentFOVCircle.Size = UDim2.fromOffset(FOVRadius*2, FOVRadius*2)
+            else
+                SilentFOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+                SilentFOVCircle.Radius = FOVRadius
+            end
+        end
+
+        -- Update Current Target
+        CurrentTarget = (SilentAimEnabled or SilentAimAttachEnabled) and getClosestTarget() or nil
+
+        -- Tracer logic
+        if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("Head") then
+            local targetHead = CurrentTarget.Character.Head
+            local humanoid = CurrentTarget.Character:FindFirstChild("Humanoid")
+            local myHead = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+            if myHead and humanoid and humanoid.Health > 0 then
+                local myScreenPos, myOnScreen = Camera:WorldToViewportPoint(myHead.Position)
+                local targetScreenPos, targetOnScreen = Camera:WorldToViewportPoint(targetHead.Position)
+                if myOnScreen and targetOnScreen then
+                    Tracer.Visible = true
+                    Tracer.From = Vector2.new(myScreenPos.X, myScreenPos.Y)
+                    Tracer.To = Vector2.new(targetScreenPos.X, targetScreenPos.Y)
+                    Tracer.Color = Color3.fromRGB(255, 50, 50)
+                else
+                    Tracer.Visible = false
+                end
+            else
+                Tracer.Visible = false
+            end
+        else
+            Tracer.Visible = false
+        end
+
+        -- Fly up logic
+        if FlyEnabled and isFlyingUp and HumanoidRootPart then
+            local v = HumanoidRootPart.Velocity
+            HumanoidRootPart.Velocity = Vector3.new(v.X, floatPower, v.Z)
+        end
+
+        -- Snap Under Map
+        if teleportActive and lockedY and HumanoidRootPart then
+            local currentPos = HumanoidRootPart.Position
+            if math.abs(currentPos.Y - lockedY) > 0.1 then
+                HumanoidRootPart.CFrame = CFrame.new(currentPos.X, lockedY, currentPos.Z)
+            end
+        end
+    end)
+end)
+
+local oldFire
+if Remote and Remote.FireServer then
+    local ok, res = pcall(function()
+        oldFire = hookfunction(Remote.FireServer, function(self, ...)
+            if self ~= Remote then
+                return oldFire(self, ...)
+            end
+
+            local args = {...}
+
+            if (SilentAimEnabled or SilentAimAttachEnabled)
+                and args[2] == "shoot_gun"
+                and CurrentTarget then
+
+                local character = CurrentTarget.Character
+                if not character then
+                    return oldFire(self, unpack(args))
+                end
+
+                local head = character:FindFirstChild("Head")
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChild("Humanoid")
+
+                if head and hrp and humanoid then
+                    local aimPos
+
+                    -- ✅ เลือกตำแหน่งเล็ง
+if SilentAimAttachEnabled then
+    aimPos = head.Position
+elseif SilentAimEnabled then
+    -- ถ้ามีวงกลมครอบหัว และหัวเป้าอยู่ในวง → ยิงล็อกหัว
+    if headSphere and (head.Position - headSphere.Position).Magnitude <= (headSphere.Size.X / 2) then
+        aimPos = head.Position
+    else
+        -- ปกติยัง Predict
+        aimPos = predictPosition(head, hrp)
+    end
+end
+
+                    if aimPos then
+                        -- ตรวจ
+                        if isBehindWall(
+                            (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head"))
+                            and LocalPlayer.Character.Head.Position or nil,
+                            aimPos
+                        ) then
+                            args[4] = CFrame.new(math.huge, math.huge, math.huge)
+                        else
+                            args[4] = CFrame.new(LocalPlayer.Character.Head.Position, aimPos)
+                        end
+
+                        args[5] = {
+                            [1] = {
+                                [1] = {
+                                    Instance = head,
+                                    Normal = Vector3.new(0, 1, 0),
+                                    Position = aimPos
+                                }
+                            }
+                        }
+
+                            local success, beam = pcall(function()
+                            local part = Instance.new("Part")
+                            part.Anchored = true
+                            part.CanCollide = false
+                            part.Size = Vector3.new(0.13, 0.13, (aimPos - LocalPlayer.Character.Head.Position).Magnitude)
+                            part.CFrame = CFrame.new(LocalPlayer.Character.Head.Position, aimPos) * CFrame.new(0, 0, -part.Size.Z / 2)
+                            part.Material = Enum.Material.Neon
+                            part.Transparency = 0.35
+                            part.Color = Color3.fromRGB(255, 255, 255)
+                            part.Parent = Workspace
+                            Debris:AddItem(part, 4)
+                            return part
+                        end)
+
+                        --รวจว่าโดนจริงมั้ย 
+                        if humanoid then
+                            local previousHealth = humanoid.Health
+                            task.spawn(function()
+                                task.wait(0.1)
+                                if humanoid and humanoid.Health < previousHealth then
+                                    if success and beam then
+                                        beam.Color = Color3.fromRGB(0, 255, 0)
+                                    end
+
+                                    for _, part in ipairs(character:GetDescendants()) do
+                                        if part:IsA("BasePart") then
+                                            local box = Instance.new("Part")
+                                            box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
+                                            box.CFrame = part.CFrame
+                                            box.Anchored = true
+                                            box.CanCollide = false
+                                            box.Material = Enum.Material.Neon
+                                            box.Color = Color3.fromRGB(128, 0, 128)
+                                            box.Transparency = 0.5
+                                            box.Parent = Workspace
+
+                                            TweenService:Create(
+                                                box,
+                                                TweenInfo.new(1.5, Enum.EasingStyle.Linear),
+                                                {Transparency = 1}
+                                            ):Play()
+
+                                            Debris:AddItem(box, 2)
+                                        end
+                                    end
+
+                                    if head then
+                                        local blood = Instance.new("Part")
+                                        blood.Size = Vector3.new(0.2, 0.2, 0.2)
+                                        blood.Shape = Enum.PartType.Ball
+                                        blood.Material = Enum.Material.Neon
+                                        blood.Color = Color3.fromRGB(255, 0, 0)
+                                        blood.CFrame = CFrame.new(head.Position)
+                                        blood.Anchored = false
+                                        blood.CanCollide = false
+                                        blood.Parent = Workspace
+
+                                        local bv = Instance.new("BodyVelocity")
+                                        bv.Velocity = Vector3.new(
+                                            math.random(-5, 5),
+                                            math.random(5, 10),
+                                            math.random(-5, 5)
+                                        )
+                                        bv.P = 5000
+                                        bv.MaxForce = Vector3.new(4000, 4000, 4000)
+                                        bv.Parent = blood
+
+                                        Debris:AddItem(blood, 1)
+                                    end
+                                else
+                                    if success and beam then
+                                        beam.Color = Color3.fromRGB(255, 0, 0)
+                                    end
+                                end
+                            end)
+                        end
+                    end
+                end
+            end
+
+            return oldFire(self, unpack(args))
+        end)
+    end)
+
+    if not ok then
+        warn("⚠️failed:", res)
+    end
+end
+
+-- 🟢 วงกลม Glow ครอบหัว
+local headSphere
+
+RunService.RenderStepped:Connect(function()
+if (SilentAimEnabled or SilentAimAttachEnabled)
+and CurrentTarget
+and CurrentTarget.Character
+and CurrentTarget.Character:FindFirstChild("Head") then
+
+local head = CurrentTarget.Character.Head  
+    if not headSphere then  
+        headSphere = Instance.new("Part")  
+        headSphere.Anchored = false  
+        headSphere.CanCollide = false  
+        headSphere.Shape = Enum.PartType.Ball  
+        headSphere.Material = Enum.Material.Neon  
+        headSphere.Color = Color3.fromRGB(0, 255, 0)  
+        headSphere.Transparency = 0.5  
+        headSphere.Size = Vector3.new(3, 3, 3) -- เล็กลงให้ครอบพอดีหัว  
+        headSphere.Parent = Workspace  
+    end  
+
+    -- ให้วงกลมติดตามหัวตลอด  
+    headSphere.CFrame = CFrame.new(head.Position)  
+else  
+    if headSphere then  
+        headSphere:Destroy()  
+        headSphere = nil  
+    end  
+end
+
+end)
+local Tab = Window:Tab({Title = "COMBAT:", Icon = "crosshair"})
+
+Tab:Section({Title = "GUN:"})
+
+Tab:Toggle({
+    Title = "Silent Aim",
+    Default = false,
+    Callback = function(state)
+        SilentAimEnabled = state
+    end
+})
+
+Tab:Toggle({
+    Title = "Silent Aim (Attach Anti Lock)",
+    Default = false,
+    Callback = function(state)
+        SilentAimAttachEnabled = state
+    end
+})
+-- ======= Anti-Aimbot (Client-side, R15 Neck-only) =======
+-- วางต่อท้ายสคริปต์ของคุณ (เชื่อมกับ WindUI และตัวแปรเดิม)
+local AntiAimEnabled = false
+local AntiAimAuto = true -- เปิดออโต้เมื่อมีคนเล็งเรา
+local AntiIntensity = 0.35 -- base amplitude (studs)
+local AntiVar = 0.45 -- variation
+local AntiBaseFreq = 0.9
+local AntiFreqVar = 1.1
+local AntiBurstChancePerSec = 0.06
+local AntiBurstDuration = 0.16
+local AntiBurstMult = 2.2
+local AntiDecay = 0.12
+local AntiDetectAngleThreshold = 0.92 -- dot product threshold (ใกล้ 1 = กำลังมองตรงๆ)
+local AntiDetectDistance = 200 -- ระยะที่จะตรวจว่าศัตรูกำลังเล็งเรา (studs)
+
+-- UI (เพิ่มลงใน COMBAT tab ที่มีอยู่แล้ว)
+if Window and Window.Tab then
+    local ta = Window:Tab({Title = "ANTI", Icon = "rbxassetid://7025256007"})
+    ta:Section({Title = "Anti-Aimbot (Client-side)"})
+    ta:Toggle({
+        Title = "Enable Anti-Aimbot",
+        Default = false,
+        Callback = function(state)
+            AntiAimEnabled = state
+        end
+    })
+    ta:Toggle({
+        Title = "Auto Enable (when targeted)",
+        Default = true,
+        Callback = function(state)
+            AntiAimAuto = state
+        end
+    })
+    ta:Slider({
+        Title = "Intensity",
+        Description = "ขนาดการขยับหัว (studs)",
+        Default = AntiIntensity,
+        Min = 0,
+        Max = 1.2,
+        Format = function(v) return string.format("%.2f", v) end,
+        Callback = function(v)
+            AntiIntensity = v
+        end
+    })
+    ta:Slider({
+        Title = "Burst Strength",
+        Description = "ค่าคูณช่วง burst (สูง = พลาดหนัก)",
+        Default = AntiBurstMult,
+        Min = 1,
+        Max = 4,
+        Callback = function(v)
+            AntiBurstMult = v
+        end
+    })
+    ta:Slider({
+        Title = "Detect Distance",
+        Description = "ระยะที่ตรวจว่าศัตรูกำลังเล็งเรา",
+        Default = AntiDetectDistance,
+        Min = 30,
+        Max = 500,
+        Callback = function(v)
+            AntiDetectDistance = v
+        end
+    })
+end
+
+-- internal for neck jitter
+local antiConn = nil
+local antiNeck = nil
+local antiOrigC0 = nil
+local antiSeedX = math.random() * 1000
+local antiSeedY = math.random() * 1000
+local antiBurstActive = false
+local antiBurstEnd = 0
+local antiCurrMult = 1
+
+local function getNeckMotorR15(char)
+    if not char then return nil end
+    local upper = char:FindFirstChild("UpperTorso")
+    if not upper then return nil end
+    local neck = upper:FindFirstChild("Neck")
+    if neck and neck:IsA("Motor6D") then return neck end
+    return nil
+end
+
+-- Detect if a given player is looking at us (approx)
+local function isPlayerAimingAtMe(p)
+    if not p or not p.Character then return false end
+    local head = p.Character:FindFirstChild("Head")
+    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+    if not head or not hrp then return false end
+    local myHead = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+    if not myHead then return false end
+
+    local toMe = (myHead.Position - head.Position)
+    local dist = toMe.Magnitude
+    if dist > AntiDetectDistance then return false end
+
+    local dirToMe = toMe.Unit
+    local lookVec = head.CFrame.LookVector
+    -- dot close to 1 => looking directly at us
+    local d = lookVec:Dot(dirToMe)
+    -- require also line of sight (no wall between)
+    local los = not isBehindWall(head.Position, myHead.Position)
+    return d >= AntiDetectAngleThreshold and los
+end
+
+local function startAntiJitter()
+    if antiConn then return end
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    antiNeck = getNeckMotorR15(char)
+    if not antiNeck then
+        -- no neck found; don't start to avoid head CFrame hacks
+        -- you could fallback to minor head.CFrame adjustments, but we avoid to be safe
+        -- warn("Anti-Aim: Neck not found (R15 required).")
+    else
+        antiOrigC0 = antiNeck.C0
+    end
+
+    local t0 = tick()
+    antiConn = RunService.RenderStepped:Connect(function(dt)
+        -- auto-enable logic: if Auto and someone targeting us -> enable temporarily
+        if AntiAimAuto and not AntiAimEnabled then
+            -- check all players if any aiming at us
+            for _, pl in ipairs(Players:GetPlayers()) do
+                if pl ~= LocalPlayer then
+                    if isPlayerAimingAtMe(pl) then
+                        -- enable briefly
+                        AntiAimEnabled = true
+                        -- optionally set timeout? we'll leave user to toggle off
+                        break
+                    end
+                end
+            end
+        end
+
+        if not AntiAimEnabled then
+            -- restore neck if we had modified
+            if antiNeck and antiOrigC0 then
+                pcall(function() antiNeck.C0 = antiOrigC0 end)
+            end
+            antiCurrMult = 1
+            return
+        end
+
+        if not antiNeck or not antiOrigC0 then
+            return
+        end
+
+        local nowt = tick() - t0
+        -- frequency and amplitude vary smoothly using noise
+        local freq = AntiBaseFreq + ((math.noise(antiSeedX + nowt*0.03) - 0.5) * 2) * AntiFreqVar
+        local baseAmp = AntiIntensity + ((math.noise(antiSeedY + nowt*0.021) - 0.5) * 2) * AntiVar
+        baseAmp = math.max(0, baseAmp)
+
+        -- burst probabilistic trigger
+        if not antiBurstActive then
+            if math.random() < (AntiBurstChancePerSec * dt) then
+                antiBurstActive = true
+                antiBurstEnd = tick() + (AntiBurstDuration * (0.8 + math.random()*0.8))
+                antiCurrMult = AntiBurstMult
+            end
+        end
+
+        if antiBurstActive then
+            if tick() >= antiBurstEnd then
+                antiBurstActive = false
+            end
+        end
+
+        if not antiBurstActive then
+            -- decay smoothly toward 1
+            antiCurrMult = antiCurrMult + (1 - antiCurrMult) * AntiDecay
+        end
+
+        -- smooth offsets from noise
+        local nx = (math.noise(antiSeedX + nowt * freq) - 0.5) * 2
+        local ny = (math.noise(antiSeedY + (nowt * freq * 1.12)) - 0.5) * 2
+        local offX = nx * baseAmp * antiCurrMult
+        local offY = ny * baseAmp * antiCurrMult
+
+        -- apply only to Neck.C0
+        pcall(function()
+            antiNeck.C0 = antiOrigC0 * CFrame.new(offX, offY, 0)
+        end)
+    end)
+end
+
+local function stopAntiJitter()
+    if antiConn then
+        antiConn:Disconnect()
+        antiConn = nil
+    end
+    if antiNeck and antiOrigC0 then
+        pcall(function() antiNeck.C0 = antiOrigC0 end)
+    end
+    antiNeck = nil
+    antiOrigC0 = nil
+    antiBurstActive = false
+    antiCurrMult = 1
+end
+
+-- Bind toggle keys: K = toggle Ant iAim (reuse existing K mapping)
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.K then
+        AntiAimEnabled = not AntiAimEnabled
+        if AntiAimEnabled then
+            startAntiJitter()
+        else
+            stopAntiJitter()
+        end
+    end
+end)
+
+-- Ensure anti loop restarts on respawn
+Players.LocalPlayer.CharacterAdded:Connect(function(char)
+    wait(0.45)
+    stopAntiJitter()
+    if AntiAimEnabled then
+        startAntiJitter()
+    end
+end)
+
+-- start background (if enabled by default)
+if AntiAimEnabled then startAntiJitter() end
+
+-- ========== end Anti-Aimbot ==========
