@@ -590,3 +590,89 @@ RunService.RenderStepped:Connect(function(dt)
 		fakeHead.CFrame = head.CFrame * CFrame.new(offset)
 	end
 end)
+-- ==========================
+-- Inventory Viewer UI
+-- ==========================
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "InventoryViewerGUI"
+ScreenGui.Parent = PlayerGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Enabled = true -- เปิดตอนแรก
+
+-- Frame แถบรายชื่อ
+local listFrame = Instance.new("Frame", ScreenGui)
+listFrame.Size = UDim2.new(0, 180, 0.4, 0)
+listFrame.Position = UDim2.new(0, 10, 0.3, 0)
+listFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+listFrame.BackgroundTransparency = 0.2
+Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0, 8)
+
+local playerList = Instance.new("ScrollingFrame", listFrame)
+playerList.Size = UDim2.new(1, -10, 1, -50)
+playerList.Position = UDim2.new(0, 5, 0, 5)
+playerList.BackgroundTransparency = 1
+playerList.ScrollBarThickness = 6
+playerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UIListLayout", playerList).Padding = UDim.new(0, 4)
+
+local resetButton = Instance.new("TextButton", listFrame)
+resetButton.Size = UDim2.new(1, -10, 0, 30)
+resetButton.Position = UDim2.new(0, 5, 1, -35)
+resetButton.Text = "Refresh"
+resetButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+resetButton.TextColor3 = Color3.new(1, 1, 1)
+resetButton.Font = Enum.Font.GothamBold
+resetButton.TextScaled = true
+Instance.new("UICorner", resetButton).CornerRadius = UDim.new(0, 6)
+
+-- กรอบ Inventory
+local invFrame = Instance.new("Frame", ScreenGui)
+invFrame.Size = UDim2.new(0, 350, 0, 300)
+invFrame.Position = UDim2.new(0, 200, 0.3, 0)
+invFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+invFrame.BackgroundTransparency = 0.2
+invFrame.Visible = false
+Instance.new("UICorner", invFrame).CornerRadius = UDim.new(0, 8)
+
+local invTitle = Instance.new("TextLabel", invFrame)
+invTitle.Size = UDim2.new(1, -40, 0, 30)
+invTitle.Position = UDim2.new(0, 5, 0, 0)
+invTitle.BackgroundTransparency = 1
+invTitle.TextColor3 = Color3.new(1, 1, 1)
+invTitle.Font = Enum.Font.GothamBold
+invTitle.TextScaled = true
+invTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local closeButton = Instance.new("TextButton", invFrame)
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 0)
+closeButton.Text = "X"
+closeButton.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextScaled = true
+Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0, 6)
+closeButton.MouseButton1Click:Connect(function() invFrame.Visible = false end)
+
+local invList = Instance.new("ScrollingFrame", invFrame)
+invList.Position = UDim2.new(0, 10, 0, 40)
+invList.Size = UDim2.new(1, -20, 1, -50)
+invList.BackgroundTransparency = 1
+invList.ScrollBarThickness = 6
+invList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UIListLayout", invList).Padding = UDim.new(0, 5)
+
+-- (… โค้ด showInventory, createPlayerButton, Billboard, Alert ยังอยู่ตามเดิม …)
+
+-- ==========================
+-- ปุ่มเปิด/ปิด Inventory Viewer ใน Combat Tab (WindUI)
+-- ==========================
+Tab:Section({Title = "INVENTORY VIEWER"})
+
+Tab:Button({
+    Title = "Toggle Inventory Viewer",
+    Callback = function()
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
+})
