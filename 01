@@ -509,6 +509,16 @@ Tab:Toggle({
     end
 })
 
+Tab:Section({Title = "ANTI AIMBOT"})
+
+Tab:Toggle({
+    Title = "Enable Anti-Aimbot",
+    Default = true,
+    Callback = function(state)
+        AntiAimEnabled = state
+    end
+})
+
 -- ===== Adaptive Anti-Aimbot (with UI toggle) =====
 local AntiAimEnabled = true
 local neckMotor, originalNeckC0
@@ -592,14 +602,3 @@ RunService.RenderStepped:Connect(function(dt)
 		neckMotor.C0 = originalNeckC0 * CFrame.new(offX, offY, 0)
 	end)
 end)
-
--- ===== UI เพิ่ม Anti-Aimbot ใน Combat Tab =====
-Tab:Section({Title = "ANTI AIMBOT"})
-
-Tab:Toggle({
-    Title = "Enable Anti-Aimbot",
-    Default = true,
-    Callback = function(state)
-        AntiAimEnabled = state
-    end
-})
