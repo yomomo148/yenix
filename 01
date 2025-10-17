@@ -509,8 +509,6 @@ Tab:Toggle({
     end
 })
 
-Tab:Section({Title = "ANTI AIMBOT"})
-
 Tab:Toggle({
     Title = "Enable Anti-Aimbot",
     Default = true,
@@ -519,7 +517,6 @@ Tab:Toggle({
     end
 })
 
--- ===== Adaptive Anti-Aimbot (with UI toggle) =====
 local AntiAimEnabled = true
 local neckMotor, originalNeckC0
 local amplitude = 0.25
