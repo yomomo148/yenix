@@ -188,6 +188,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+local function c()
+    return _G
+end
 local oldfire;
 oldfire = hookfunction(ReplicatedStorage.Remotes.Send.FireServer, function(self, ...)
     local args = {...}
