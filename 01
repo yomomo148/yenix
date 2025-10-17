@@ -307,31 +307,81 @@ RunService.RenderStepped:Connect(function()
     end)
 end)
 
-local oldFire
-if Remote and Remote.FireServer then
-    local ok, res = pcall(function()
-        oldFire = hookfunction(Remote.FireServer, function(self, ...)
-            if self ~= Remote then
-                return oldFire(self, ...)
-            end
+local old
+old = hookmetamethod(game, "__namecall", function(self, ...)
+    local args = {...}
+    if getnamecallmethod() == "FireServer" and self.Name == "Send" then
+        if args[2] == "shoot_gun" and c().EnabledSlientAim then
+            local target = c().TargetSlientAim
+            if target and target.Character then
+                local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+                local head = target.Character:FindFirstChild("Head")
+                if hrp and head then
+                    local origin = RootPart.Position
+                    local targetPart = target.Character:FindFirstChild(c().AimPart or "Head") or head
+                    local velocity = targetPart and targetPart.Velocity or Vector3.zero
 
-            local args = {...}
+                    local ping = Sf:GetPing()
+                    local predict = targetPart.Position + (velocity * ping * 1.15)
 
-            if (SilentAimEnabled or SilentAimAttachEnabled)
-                and args[2] == "shoot_gun"
-                and CurrentTarget then
+                    if c().EnabledWallShoot then
+                        args[4] = CFrame.new(origin, predict)
+                    else
+                        if not Character:FindFirstChildOfClass('Tool'):GetAttribute('AmmoType') == 'shootgun' then 
+                        args[4] = CFrame.new(math.huge, math.huge, math.huge)
+                        else 
+                        args[4] = CFrame.new(origin, predict)
+                        end
+                    end
 
-                local character = CurrentTarget.Character
-                if not character then
-                    return oldFire(self, unpack(args))
+                    if args[5] then
+                        for _, v in get(args[5]) do
+                            for _, x in get(v) do
+                                x.Normal = Vector3.new(0, 1, 0)
+                                x.Position = predict
+                                x.Instance = targetPart
+                            end
+                        end
+                    end
+
+                    pcall(function()
+                        local dir = predict - origin
+                        local distance = dir.Magnitude
+                        if distance > 0.1 then
+                            local tracer = Instance.new("Part")
+                            tracer.Size = Vector3.new(0.05, 0.05, distance)
+                            tracer.CFrame = CFrame.new(origin:Lerp(predict, 0.5), predict - origin)
+                            tracer.Material = Enum.Material.Neon
+                            tracer.Color = Color3.fromHSV((tick() % 5) / 5, 1, 1)
+                            tracer.CanCollide = false
+                            tracer.Anchored = true
+                            tracer.Parent = workspace
+                            Debris:AddItem(tracer, 1.2)
+                        end
+                    end)
+                    if target.Character:FindFirstChild('Humanoid') then 
+                        local oldhealth = target.Character:FindFirstChild('Humanoid').Health 
+                        task.spawn(function()
+                            if target.Character:FindFirstChild('Humanoid').Health < oldhealth then 
+                                local checker = Instance.new('Part',workspace)
+                                checker.Size = Vector3.new(30,30,30)
+                                checker.Shape = Enum.PartType.Ball
+                                checker.CFrame = target.Character:FindFirstChild(c().AimPart).CFrame or target.Character:FindFirstChild("Head").CFrame
+                                checker.Material = Enum.Material.Neon
+                                checker.Transparency = 0.4
+                                checker.Color = Color3.fromRGB(255,0,0)
+                                checker.CanCollide = false 
+                                checker.Anchored = true 
+                                Debris:AddItem(checker,1.2)
+                            end
+                        end)
+                    end
                 end
-
-                local head = character:FindFirstChild("Head")
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                local humanoid = character:FindFirstChild("Humanoid")
-
-                if head and hrp and humanoid then
-                    local aimPos
+            end
+        end
+    end
+    return old(self, unpack(args))
+end)
 
                     -- ✅ เลือกตำแหน่งเล็ง
 if SilentAimAttachEnabled then
