@@ -457,7 +457,7 @@ end
     end
 end
 
--- 🟢 วงกลม Glow ครอบหัว
+
 local headSphere
 
 RunService.RenderStepped:Connect(function()
