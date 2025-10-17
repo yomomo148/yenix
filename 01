@@ -508,231 +508,98 @@ Tab:Toggle({
         SilentAimAttachEnabled = state
     end
 })
--- ======= Anti-Aimbot (Client-side, R15 Neck-only) =======
--- วางต่อท้ายสคริปต์ของคุณ (เชื่อมกับ WindUI และตัวแปรเดิม)
-local AntiAimEnabled = false
-local AntiAimAuto = true -- เปิดออโต้เมื่อมีคนเล็งเรา
-local AntiIntensity = 0.35 -- base amplitude (studs)
-local AntiVar = 0.45 -- variation
-local AntiBaseFreq = 0.9
-local AntiFreqVar = 1.1
-local AntiBurstChancePerSec = 0.06
-local AntiBurstDuration = 0.16
-local AntiBurstMult = 2.2
-local AntiDecay = 0.12
-local AntiDetectAngleThreshold = 0.92 -- dot product threshold (ใกล้ 1 = กำลังมองตรงๆ)
-local AntiDetectDistance = 200 -- ระยะที่จะตรวจว่าศัตรูกำลังเล็งเรา (studs)
 
--- UI (เพิ่มลงใน COMBAT tab ที่มีอยู่แล้ว)
-if Window and Window.Tab then
-    local ta = Window:Tab({Title = "ANTI", Icon = "rbxassetid://7025256007"})
-    ta:Section({Title = "Anti-Aimbot (Client-side)"})
-    ta:Toggle({
-        Title = "Enable Anti-Aimbot",
-        Default = false,
-        Callback = function(state)
-            AntiAimEnabled = state
-        end
-    })
-    ta:Toggle({
-        Title = "Auto Enable (when targeted)",
-        Default = true,
-        Callback = function(state)
-            AntiAimAuto = state
-        end
-    })
-    ta:Slider({
-        Title = "Intensity",
-        Description = "ขนาดการขยับหัว (studs)",
-        Default = AntiIntensity,
-        Min = 0,
-        Max = 1.2,
-        Format = function(v) return string.format("%.2f", v) end,
-        Callback = function(v)
-            AntiIntensity = v
-        end
-    })
-    ta:Slider({
-        Title = "Burst Strength",
-        Description = "ค่าคูณช่วง burst (สูง = พลาดหนัก)",
-        Default = AntiBurstMult,
-        Min = 1,
-        Max = 4,
-        Callback = function(v)
-            AntiBurstMult = v
-        end
-    })
-    ta:Slider({
-        Title = "Detect Distance",
-        Description = "ระยะที่ตรวจว่าศัตรูกำลังเล็งเรา",
-        Default = AntiDetectDistance,
-        Min = 30,
-        Max = 500,
-        Callback = function(v)
-            AntiDetectDistance = v
-        end
-    })
+-- ===== Adaptive Anti-Aimbot (with UI toggle) =====
+local AntiAimEnabled = true
+local neckMotor, originalNeckC0
+local amplitude = 0.25
+local baseFreq = 1
+local burstChance = 0.05
+local burstMult = 2.0
+
+-- ระบบปรับอัตโนมัติ
+local shotWindow = {}
+local windowSize = 10
+local targetHitRate = 0.2 -- ยิงโดนไม่เกิน 20%
+
+local function getNeck(char)
+	local upper = char and char:FindFirstChild("UpperTorso")
+	if not upper then return nil end
+	return upper:FindFirstChild("Neck")
 end
 
--- internal for neck jitter
-local antiConn = nil
-local antiNeck = nil
-local antiOrigC0 = nil
-local antiSeedX = math.random() * 1000
-local antiSeedY = math.random() * 1000
-local antiBurstActive = false
-local antiBurstEnd = 0
-local antiCurrMult = 1
-
-local function getNeckMotorR15(char)
-    if not char then return nil end
-    local upper = char:FindFirstChild("UpperTorso")
-    if not upper then return nil end
-    local neck = upper:FindFirstChild("Neck")
-    if neck and neck:IsA("Motor6D") then return neck end
-    return nil
+local function onDamage()
+	table.insert(shotWindow, tick())
+	for i=#shotWindow,1,-1 do
+		if tick() - shotWindow[i] > windowSize then
+			table.remove(shotWindow, i)
+		end
+	end
 end
 
--- Detect if a given player is looking at us (approx)
-local function isPlayerAimingAtMe(p)
-    if not p or not p.Character then return false end
-    local head = p.Character:FindFirstChild("Head")
-    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-    if not head or not hrp then return false end
-    local myHead = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
-    if not myHead then return false end
-
-    local toMe = (myHead.Position - head.Position)
-    local dist = toMe.Magnitude
-    if dist > AntiDetectDistance then return false end
-
-    local dirToMe = toMe.Unit
-    local lookVec = head.CFrame.LookVector
-    -- dot close to 1 => looking directly at us
-    local d = lookVec:Dot(dirToMe)
-    -- require also line of sight (no wall between)
-    local los = not isBehindWall(head.Position, myHead.Position)
-    return d >= AntiDetectAngleThreshold and los
+local function bindHumanoid(char)
+	local hum = char:FindFirstChild("Humanoid")
+	if hum then
+		local lastHp = hum.Health
+		hum.HealthChanged:Connect(function(hp)
+			if hp < lastHp then
+				onDamage()
+			end
+			lastHp = hp
+		end)
+	end
 end
 
-local function startAntiJitter()
-    if antiConn then return end
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    antiNeck = getNeckMotorR15(char)
-    if not antiNeck then
-        -- no neck found; don't start to avoid head CFrame hacks
-        -- you could fallback to minor head.CFrame adjustments, but we avoid to be safe
-        -- warn("Anti-Aim: Neck not found (R15 required).")
-    else
-        antiOrigC0 = antiNeck.C0
-    end
-
-    local t0 = tick()
-    antiConn = RunService.RenderStepped:Connect(function(dt)
-        -- auto-enable logic: if Auto and someone targeting us -> enable temporarily
-        if AntiAimAuto and not AntiAimEnabled then
-            -- check all players if any aiming at us
-            for _, pl in ipairs(Players:GetPlayers()) do
-                if pl ~= LocalPlayer then
-                    if isPlayerAimingAtMe(pl) then
-                        -- enable briefly
-                        AntiAimEnabled = true
-                        -- optionally set timeout? we'll leave user to toggle off
-                        break
-                    end
-                end
-            end
-        end
-
-        if not AntiAimEnabled then
-            -- restore neck if we had modified
-            if antiNeck and antiOrigC0 then
-                pcall(function() antiNeck.C0 = antiOrigC0 end)
-            end
-            antiCurrMult = 1
-            return
-        end
-
-        if not antiNeck or not antiOrigC0 then
-            return
-        end
-
-        local nowt = tick() - t0
-        -- frequency and amplitude vary smoothly using noise
-        local freq = AntiBaseFreq + ((math.noise(antiSeedX + nowt*0.03) - 0.5) * 2) * AntiFreqVar
-        local baseAmp = AntiIntensity + ((math.noise(antiSeedY + nowt*0.021) - 0.5) * 2) * AntiVar
-        baseAmp = math.max(0, baseAmp)
-
-        -- burst probabilistic trigger
-        if not antiBurstActive then
-            if math.random() < (AntiBurstChancePerSec * dt) then
-                antiBurstActive = true
-                antiBurstEnd = tick() + (AntiBurstDuration * (0.8 + math.random()*0.8))
-                antiCurrMult = AntiBurstMult
-            end
-        end
-
-        if antiBurstActive then
-            if tick() >= antiBurstEnd then
-                antiBurstActive = false
-            end
-        end
-
-        if not antiBurstActive then
-            -- decay smoothly toward 1
-            antiCurrMult = antiCurrMult + (1 - antiCurrMult) * AntiDecay
-        end
-
-        -- smooth offsets from noise
-        local nx = (math.noise(antiSeedX + nowt * freq) - 0.5) * 2
-        local ny = (math.noise(antiSeedY + (nowt * freq * 1.12)) - 0.5) * 2
-        local offX = nx * baseAmp * antiCurrMult
-        local offY = ny * baseAmp * antiCurrMult
-
-        -- apply only to Neck.C0
-        pcall(function()
-            antiNeck.C0 = antiOrigC0 * CFrame.new(offX, offY, 0)
-        end)
-    end)
-end
-
-local function stopAntiJitter()
-    if antiConn then
-        antiConn:Disconnect()
-        antiConn = nil
-    end
-    if antiNeck and antiOrigC0 then
-        pcall(function() antiNeck.C0 = antiOrigC0 end)
-    end
-    antiNeck = nil
-    antiOrigC0 = nil
-    antiBurstActive = false
-    antiCurrMult = 1
-end
-
--- Bind toggle keys: K = toggle Ant iAim (reuse existing K mapping)
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.KeyCode == Enum.KeyCode.K then
-        AntiAimEnabled = not AntiAimEnabled
-        if AntiAimEnabled then
-            startAntiJitter()
-        else
-            stopAntiJitter()
-        end
-    end
+lp.CharacterAdded:Connect(function(c)
+	task.wait(0.5)
+	neckMotor = getNeck(c)
+	if neckMotor then originalNeckC0 = neckMotor.C0 end
+	bindHumanoid(c)
 end)
 
--- Ensure anti loop restarts on respawn
-Players.LocalPlayer.CharacterAdded:Connect(function(char)
-    wait(0.45)
-    stopAntiJitter()
-    if AntiAimEnabled then
-        startAntiJitter()
-    end
+if lp.Character then
+	neckMotor = getNeck(lp.Character)
+	if neckMotor then originalNeckC0 = neckMotor.C0 end
+	bindHumanoid(lp.Character)
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	if not AntiAimEnabled then return end
+	if not neckMotor or not originalNeckC0 then return end
+
+	local hits = #shotWindow
+	local shotsExpected = math.max(1, hits + 5)
+	local hitRate = hits / shotsExpected
+
+	if hitRate > targetHitRate then
+		amplitude = math.min(amplitude + 0.01, 0.7)
+		burstChance = math.min(burstChance + 0.005, 0.2)
+	else
+		amplitude = math.max(amplitude - 0.005, 0.2)
+		burstChance = math.max(burstChance - 0.001, 0.05)
+	end
+
+	local t = tick()
+	local nx = (math.noise(t*baseFreq, 0) - 0.5)*2
+	local ny = (math.noise(0, t*baseFreq*1.1) - 0.5)*2
+	local doBurst = math.random() < (burstChance * dt)
+	local mult = doBurst and burstMult or 1
+
+	local offX = nx * amplitude * mult
+	local offY = ny * amplitude * mult
+
+	pcall(function()
+		neckMotor.C0 = originalNeckC0 * CFrame.new(offX, offY, 0)
+	end)
 end)
 
--- start background (if enabled by default)
-if AntiAimEnabled then startAntiJitter() end
+-- ===== UI เพิ่ม Anti-Aimbot ใน Combat Tab =====
+Tab:Section({Title = "ANTI AIMBOT"})
 
--- ========== end Anti-Aimbot ==========
+Tab:Toggle({
+    Title = "Enable Anti-Aimbot",
+    Default = true,
+    Callback = function(state)
+        AntiAimEnabled = state
+    end
+})
