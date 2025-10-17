@@ -521,83 +521,72 @@ Tab:Toggle({
 
 local AntiAimEnabled = true
 local neckMotor, originalNeckC0
-local amplitude = 0.25
-local baseFreq = 1
-local burstChance = 0.05
-local burstMult = 2.0
+local fakeHead
 
--- ระบบปรับอัตโนมัติ
-local shotWindow = {}
-local windowSize = 10
-local targetHitRate = 0.2 -- ยิงโดนไม่เกิน 20%
+-- 🟢 สร้างหัวปลอม
+local function createFakeHead(char)
+	if fakeHead then fakeHead:Destroy() end
+	local head = char:FindFirstChild("Head")
+	if not head then return end
 
+	fakeHead = Instance.new("Part")
+	fakeHead.Size = Vector3.new(1,1,1)
+	fakeHead.Shape = Enum.PartType.Ball
+	fakeHead.Material = Enum.Material.Neon
+	fakeHead.Color = Color3.fromRGB(255,0,0)
+	fakeHead.CanCollide = false
+	fakeHead.Anchored = true
+	fakeHead.Transparency = 0.6
+	fakeHead.Parent = workspace
+end
+
+-- 🟢 หาคอ
 local function getNeck(char)
 	local upper = char and char:FindFirstChild("UpperTorso")
 	if not upper then return nil end
 	return upper:FindFirstChild("Neck")
 end
 
-local function onDamage()
-	table.insert(shotWindow, tick())
-	for i=#shotWindow,1,-1 do
-		if tick() - shotWindow[i] > windowSize then
-			table.remove(shotWindow, i)
-		end
-	end
-end
-
-local function bindHumanoid(char)
-	local hum = char:FindFirstChild("Humanoid")
-	if hum then
-		local lastHp = hum.Health
-		hum.HealthChanged:Connect(function(hp)
-			if hp < lastHp then
-				onDamage()
-			end
-			lastHp = hp
-		end)
-	end
-end
-
+-- 🟢 ติดตั้งตอน spawn
 lp.CharacterAdded:Connect(function(c)
 	task.wait(0.5)
 	neckMotor = getNeck(c)
 	if neckMotor then originalNeckC0 = neckMotor.C0 end
-	bindHumanoid(c)
+	createFakeHead(c)
 end)
 
 if lp.Character then
 	neckMotor = getNeck(lp.Character)
 	if neckMotor then originalNeckC0 = neckMotor.C0 end
-	bindHumanoid(lp.Character)
+	createFakeHead(lp.Character)
 end
 
+-- 🟢 AntiAim Loop
 RunService.RenderStepped:Connect(function(dt)
-	if not AntiAimEnabled then return end
-	if not neckMotor or not originalNeckC0 then return end
-
-	local hits = #shotWindow
-	local shotsExpected = math.max(1, hits + 5)
-	local hitRate = hits / shotsExpected
-
-	if hitRate > targetHitRate then
-		amplitude = math.min(amplitude + 0.01, 0.7)
-		burstChance = math.min(burstChance + 0.005, 0.2)
-	else
-		amplitude = math.max(amplitude - 0.005, 0.2)
-		burstChance = math.max(burstChance - 0.001, 0.05)
+	if not AntiAimEnabled then
+		if fakeHead then fakeHead.Transparency = 1 end
+		return
 	end
 
+	local char = lp.Character
+	if not char or not char:FindFirstChild("Head") or not neckMotor then return end
+	local head = char.Head
+
+	-- 🌀 Desync หัวจริง (ส่าย + random offset)
 	local t = tick()
-	local nx = (math.noise(t*baseFreq, 0) - 0.5)*2
-	local ny = (math.noise(0, t*baseFreq*1.1) - 0.5)*2
-	local doBurst = math.random() < (burstChance * dt)
-	local mult = doBurst and burstMult or 1
+	local jitterX = math.sin(t*25) * 0.3
+	local jitterY = math.cos(t*30) * 0.3
+	local jitterZ = (math.noise(t*2,0,0)-0.5) * 0.5
 
-	local offX = nx * amplitude * mult
-	local offY = ny * amplitude * mult
+	neckMotor.C0 = originalNeckC0 * CFrame.new(jitterX,jitterY,jitterZ)
 
-	pcall(function()
-		neckMotor.C0 = originalNeckC0 * CFrame.new(offX, offY, 0)
-	end)
+	-- 🎭 ขยับหัวปลอมสุ่ม
+	if fakeHead then
+		local offset = Vector3.new(
+			math.sin(t*10)*2,
+			math.cos(t*8)*2,
+			math.sin(t*6)*2
+		)
+		fakeHead.CFrame = head.CFrame * CFrame.new(offset)
+	end
 end)
