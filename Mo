@@ -1,0 +1,547 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
+local ContextActionService = game:GetService("ContextActionService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Camera = Workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+local Player = Players.LocalPlayer
+
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+local WindUI = nil
+pcall(function()
+    WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+end)
+
+local Window
+if WindUI then
+    Window = WindUI:CreateWindow({
+        Title = "MOKUN NEXUS 🔫 | a3.1",
+        Icon = "rbxassetid://14634623085",
+        Author = "https://discord.gg/RCgqfsCKB4",
+        Folder = "MOKUN NEXUS",
+        Size = UDim2.fromOffset(400, 200),
+        Theme = "Dark",
+        Transparent = true,
+        Resizable = true,
+        KeyCode = Enum.KeyCode.G
+    })
+else
+    Window = { 
+        Tab = function(_)
+            return { 
+                Section = function() end, 
+                Toggle = function() end, 
+                Slider = function() end, 
+                Button = function() end, 
+                Dropdown = function() return {} end, 
+                Divider = function() end 
+            } 
+        end 
+    }
+end
+
+if WindUI and Window then
+    Window:EditOpenButton({
+        Icon = "rbxassetid://14634623085",
+        CornerRadius = UDim.new(0, 100),
+        StrokeThickness = 2,
+        Color = ColorSequence.new(Color3.fromHSV(0, 1, 1), Color3.fromHSV(0.1, 1, 1)),
+        OnlyMobile = false,
+        Enabled = true,
+        Draggable = true,
+        Size = UDim2.fromOffset(60, 60)
+    })
+end
+
+-- G Key
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.G and WindUI and Window then
+        if Window.Toggle then
+            Window:Toggle()
+        elseif Window.SetVisible then
+            Window:SetVisible(not Window.Visible)
+        end
+    end
+end)
+
+local SilentAimEnabled = false
+local FOVRadius = 120
+local CurrentTarget = nil
+local SilentFOVCircle
+
+if not isMobile then
+    SilentFOVCircle = Drawing.new("Circle")
+    SilentFOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Changed to pure white
+    SilentFOVCircle.Thickness = 1
+    SilentFOVCircle.NumSides = 64
+    SilentFOVCircle.Filled = false
+    SilentFOVCircle.Transparency = 1
+    SilentFOVCircle.Radius = FOVRadius
+    SilentFOVCircle.Visible = false
+else
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "MobileFOV"
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    SilentFOVCircle = Instance.new("Frame")
+    SilentFOVCircle.Size = UDim2.fromOffset(FOVRadius*2, FOVRadius*2)
+    SilentFOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+    SilentFOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+    SilentFOVCircle.BackgroundTransparency = 1
+
+    local circleUI = Instance.new("UICorner")
+    circleUI.CornerRadius = UDim.new(1, 0)
+    circleUI.Parent = SilentFOVCircle
+
+    local border = Instance.new("UIStroke")
+    border.Color = Color3.fromRGB(255, 255, 255) -- Changed to pure white
+    border.Thickness = 1 -- Thinner stroke for cleaner look matching PC
+    border.Transparency = 0
+    border.Parent = SilentFOVCircle
+
+    SilentFOVCircle.Parent = ScreenGui
+end
+
+local Tracer = Drawing.new("Line")
+Tracer.Thickness = 1
+Tracer.Color = Color3.fromRGB(255, 50, 50) -- Reddish-pink, leaning towards red
+Tracer.Transparency = 1
+Tracer.Visible = false
+
+local espPlayers = {}
+local boxESPEnabled = false
+local nameESPEnabled = false
+local distanceESPEnabled = false
+local healthESPEnabled = false
+local highlightEnabled = false
+local highlights = {}
+
+-- ตัวแปรต้องประกาศก่อน
+local walkSpeedEnabled = false
+local speedValue = 0.07
+local FlyEnabled = false
+local flying = false
+local isFlyingUp = false
+local floatPower = 40
+local fastFinishEnabled = false
+local teleportActive = false
+local featureEnabled = false
+local lockedY = nil
+local maxHeight = 10
+local startY = nil
+local hookEnabled = false
+local moveConnection = nil
+local SelectedPlayer = nil
+local Active = false
+local BringConnection
+local holdTime = 0.85
+local scanInterval = 1
+local fastFinishEnabled = false
+local flickering = false
+local undergroundBaseCFrame = nil
+local CharModule = require(game.ReplicatedStorage.Modules.Core.Char)
+local DROP_DEPTH = -25     -- ลงใต้พื้น
+local FLICKER_DISTANCE = 2 -- การขยับขึ้นลงเล็กน้
+local MOVE_RADIUS = 30      -- เคลื่อนที่สุ่มในรัศมี
+local FLICKER_RATE = 0     -- ความเร็วการวาร์ป
+getgenv().Sky = false          -- เปิด/ปิดฟีเจอร์
+getgenv().SkyAmount = 1500      -- ความแรงของการสั่นรอบวง
+
+local Remote
+pcall(function()
+    Remote = ReplicatedStorage:WaitForChild("Remotes", 5):WaitForChild("Send", 5)
+end)
+
+local function getPing()
+    local stats = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("NetworkStats")
+    if stats then
+        local pingText = stats:FindFirstChild("PingLabel")
+        if pingText and typeof(pingText.Text) == "string" then
+            local ping = tonumber(pingText.Text:match("%d+"))
+            return ping and ping / 1000 or 0.2
+        end
+    end
+    return 0.2
+end
+
+local function getClosestTarget()
+    local closest = nil
+    local shortestDistance = math.huge
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("HumanoidRootPart") then
+            local head = player.Character.Head
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then -- Check if target is alive
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local screenPos = Vector2.new(pos.X, pos.Y)
+                    local distFromCenter = (screenPos - center).Magnitude
+                    if distFromCenter <= FOVRadius then
+                        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local velocity = hrp.Velocity or Vector3.zero
+                            local toTarget = (head.Position - Camera.CFrame.Position).Unit
+                            local forward = Camera.CFrame.LookVector
+                            local dot = forward:Dot(toTarget)
+                            if dot > 0.5 then
+                                local distance3D = (head.Position - (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head.Position or Camera.CFrame.Position)).Magnitude
+                                if distance3D < shortestDistance then
+                                    shortestDistance = distance3D
+                                    closest = player
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function predictPosition(head, hrp)
+    local ping = getPing()
+    local velocity = hrp and hrp.Velocity or Vector3.zero
+    return head.Position + (velocity * ping * 1.15)
+end
+
+local function isBehindWall(startPos, endPos)
+    if not startPos or not endPos then return false end
+    local ray = Ray.new(startPos, endPos - startPos)
+    local ignoreList = {}
+    if LocalPlayer.Character then table.insert(ignoreList, LocalPlayer.Character) end
+    if CurrentTarget and CurrentTarget.Character then table.insert(ignoreList, CurrentTarget.Character) end
+    local hit = Workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+    return hit ~= nil
+end
+
+local function setupCharacter(char)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid")
+    HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+
+    if moveConnection then
+        pcall(function() moveConnection:Disconnect() end)
+    end
+
+    moveConnection = RunService.RenderStepped:Connect(function()
+        if walkSpeedEnabled and Humanoid and HumanoidRootPart then
+            if Humanoid.MoveDirection.Magnitude > 0 then
+                HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (Humanoid.MoveDirection.Unit * speedValue)
+            end
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+if LocalPlayer.Character then
+    setupCharacter(LocalPlayer.Character)
+end
+
+RunService.RenderStepped:Connect(function()
+    pcall(function()
+        -- Update FOV Circle
+        if SilentFOVCircle then
+            SilentFOVCircle.Visible = SilentAimEnabled or SilentAimAttachEnabled
+            if isMobile then
+                SilentFOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+                SilentFOVCircle.Size = UDim2.fromOffset(FOVRadius*2, FOVRadius*2)
+            else
+                SilentFOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+                SilentFOVCircle.Radius = FOVRadius
+            end
+        end
+
+        -- Update Current Target
+        CurrentTarget = (SilentAimEnabled or SilentAimAttachEnabled) and getClosestTarget() or nil
+
+        -- Tracer logic
+        if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("Head") then
+            local targetHead = CurrentTarget.Character.Head
+            local humanoid = CurrentTarget.Character:FindFirstChild("Humanoid")
+            local myHead = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+            if myHead and humanoid and humanoid.Health > 0 then
+                local myScreenPos, myOnScreen = Camera:WorldToViewportPoint(myHead.Position)
+                local targetScreenPos, targetOnScreen = Camera:WorldToViewportPoint(targetHead.Position)
+                if myOnScreen and targetOnScreen then
+                    Tracer.Visible = true
+                    Tracer.From = Vector2.new(myScreenPos.X, myScreenPos.Y)
+                    Tracer.To = Vector2.new(targetScreenPos.X, targetScreenPos.Y)
+                    Tracer.Color = Color3.fromRGB(255, 50, 50)
+                else
+                    Tracer.Visible = false
+                end
+            else
+                Tracer.Visible = false
+            end
+        else
+            Tracer.Visible = false
+        end
+
+        -- Fly up logic
+        if FlyEnabled and isFlyingUp and HumanoidRootPart then
+            local v = HumanoidRootPart.Velocity
+            HumanoidRootPart.Velocity = Vector3.new(v.X, floatPower, v.Z)
+        end
+
+        -- Snap Under Map
+        if teleportActive and lockedY and HumanoidRootPart then
+            local currentPos = HumanoidRootPart.Position
+            if math.abs(currentPos.Y - lockedY) > 0.1 then
+                HumanoidRootPart.CFrame = CFrame.new(currentPos.X, lockedY, currentPos.Z)
+            end
+        end
+    end)
+end)
+
+local oldFire
+if Remote and Remote.FireServer then
+    local ok, res = pcall(function()
+        oldFire = hookfunction(Remote.FireServer, function(self, ...)
+            if self ~= Remote then
+                return oldFire(self, ...)
+            end
+
+            local args = {...}
+
+            if (SilentAimEnabled or SilentAimAttachEnabled)
+                and args[2] == "shoot_gun"
+                and CurrentTarget then
+
+                local character = CurrentTarget.Character
+                if not character then
+                    return oldFire(self, unpack(args))
+                end
+
+                local head = character:FindFirstChild("Head")
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChild("Humanoid")
+
+                if head and hrp and humanoid then
+                    local aimPos
+
+                    
+if SilentAimAttachEnabled then
+    aimPos = head.Position
+elseif SilentAimEnabled then
+    
+    if headSphere and (head.Position - headSphere.Position).Magnitude <= (headSphere.Size.X / 2) then
+        aimPos = head.Position
+    else
+        
+        aimPos = predictPosition(head, hrp)
+    end
+end
+
+if aimPos then
+    -- กำหนด origin สำหรับ CFrame (ตำแหน่งที่ยิงจาก)
+    local origin = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") 
+                   and LocalPlayer.Character.HumanoidRootPart.Position
+                   or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") 
+                       and LocalPlayer.Character.Head.Position)
+                   or Camera.CFrame.Position
+
+    -- ตรวจว่าเรากำลังถือปืนลูกซอง
+    local isShotgun = false
+    if LocalPlayer.Character then
+        for _, item in ipairs(LocalPlayer.Character:GetChildren()) do
+            local tool = item:FindFirstChildOfClass("Tool")
+            if tool then
+                local ok, ammo = pcall(function() return tool:GetAttribute("AmmoType") end)
+                if ok and ammo == "shootgun" then
+                    isShotgun = true
+                    break
+                end
+            end
+        end
+    end
+
+    -- ตั้งค่า args[4] ตามประเภทปืน
+    if isShotgun then
+        -- ลูกซอง: ยิงตรงไปที่ aimPos (ไม่เช็คกำแพง)
+        args[4] = CFrame.new(origin, aimPos)
+    else
+        -- ปืนอื่น ๆ: ถ้าอยู่หลังผนังให้หลบ, ถ้าไม่ก็เล็งปกติ
+        if isBehindWall(origin, aimPos) then
+            args[4] = CFrame.new(math.huge, math.huge, math.huge)
+        else
+            args[4] = CFrame.new(origin, aimPos)
+        end
+    end
+
+    -- ตั้งค่า Hitbox Data (args[5])
+    args[5] = {
+        [1] = {
+            [1] = {
+                Instance = head,
+                Normal = Vector3.new(0, 1, 0),
+                Position = aimPos
+            }
+        }
+    }
+end
+
+                        -- ลำแสง
+                        local success, beam = pcall(function()
+                            local part = Instance.new("Part")
+                            part.Anchored = true
+                            part.CanCollide = false
+                            part.Size = Vector3.new(0.15, 0.15, (aimPos - LocalPlayer.Character.Head.Position).Magnitude)
+                            part.CFrame = CFrame.new(LocalPlayer.Character.Head.Position, aimPos) * CFrame.new(0, 0, -part.Size.Z / 2)
+                            part.Material = Enum.Material.Neon
+                            part.Transparency = 0.25
+                            part.Color = Color3.fromRGB(255, 255, 255)
+                            part.Parent = Workspace
+                            Debris:AddItem(part, 4)
+                            return part
+                        end)
+
+                        --รวจว่าโดนจริงมั้ย 
+                        if humanoid then
+                            local previousHealth = humanoid.Health
+                            task.spawn(function()
+                                task.wait(0.1)
+                                if humanoid and humanoid.Health < previousHealth then
+                                    if success and beam then
+                                        beam.Color = Color3.fromRGB(0, 255, 0)
+                                    end
+
+                                    for _, part in ipairs(character:GetDescendants()) do
+                                        if part:IsA("BasePart") then
+                                            local box = Instance.new("Part")
+                                            box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
+                                            box.CFrame = part.CFrame
+                                            box.Anchored = true
+                                            box.CanCollide = false
+                                            box.Material = Enum.Material.Neon
+                                            box.Color = Color3.fromRGB(128, 0, 128)
+                                            box.Transparency = 0.5
+                                            box.Parent = Workspace
+
+                                            TweenService:Create(
+                                                box,
+                                                TweenInfo.new(1.5, Enum.EasingStyle.Linear),
+                                                {Transparency = 1}
+                                            ):Play()
+
+                                            Debris:AddItem(box, 2)
+                                        end
+                                    end
+
+                                    if head then
+                                        local blood = Instance.new("Part")
+                                        blood.Size = Vector3.new(0.2, 0.2, 0.2)
+                                        blood.Shape = Enum.PartType.Ball
+                                        blood.Material = Enum.Material.Neon
+                                        blood.Color = Color3.fromRGB(255, 0, 0)
+                                        blood.CFrame = CFrame.new(head.Position)
+                                        blood.Anchored = false
+                                        blood.CanCollide = false
+                                        blood.Parent = Workspace
+
+                                        local bv = Instance.new("BodyVelocity")
+                                        bv.Velocity = Vector3.new(
+                                            math.random(-5, 5),
+                                            math.random(5, 10),
+                                            math.random(-5, 5)
+                                        )
+                                        bv.P = 5000
+                                        bv.MaxForce = Vector3.new(4000, 4000, 4000)
+                                        bv.Parent = blood
+
+                                        Debris:AddItem(blood, 1)
+                                    end
+                                else
+                                    if success and beam then
+                                        beam.Color = Color3.fromRGB(255, 0, 0)
+                                    end
+                                end
+                            end)
+                        end
+                    end
+                end
+            end
+
+            return oldFire(self, unpack(args))
+        end)
+    end)
+
+    if not ok then
+        warn("⚠️failed:", res)
+    end
+end
+
+local headSphere
+
+RunService.RenderStepped:Connect(function()
+    if (SilentAimEnabled or SilentAimAttachEnabled) 
+        and CurrentTarget 
+        and CurrentTarget.Character 
+        and CurrentTarget.Character:FindFirstChild("Head") then
+
+        local head = CurrentTarget.Character.Head
+        if not headSphere then
+            headSphere = Instace.new("Part")
+            headSphere.Anchored = false
+            headSphere.CanCollide = false
+            headSphere.Shape = Enum.PartType.Ball
+            headSphere.Material = Enum.Material.Neon
+            headSphere.Color = Color3.fromRGB(0, 255, 0)
+            headSphere.Transparency = 0.5
+            headSphere.Size = Vector3.new(3, 3, 3)
+            headSphere.Parent = Workspace
+        end
+
+        
+        headSphere.CFrame = CFrame.new(head.Position)
+    else
+        if headSphere then
+            headSphere:Destroy()
+            headSphere = nil
+        end
+    end
+end)
+
+local Tab = Window:Tab({Title = "COMBAT:", Icon = "crosshair"})
+
+Tab:Section({Title = "GUN:"})
+
+Tab:Toggle({
+    Title = "Silent Aim",
+    Default = false,
+    Callback = function(state)
+        SilentAimEnabled = state
+    end
+})
+
+Tab:Toggle({
+    Title = "Silent Aim (Attach Anti Lock)",
+    Default = false,
+    Callback = function(state)
+        SilentAimAttachEnabled = state
+    end
+})
+Tab:Toggle({
+    Title = "Skip Crate Spin",
+    Callback = function()
+        local CrateController = require(ReplicatedStorage.Modules.Game.CrateSystem.Crate)
+        if CrateController and CrateController.spinning and CrateController.spinning.get() then
+            CrateController.skip_spin()
+            warn("ข้ามเรียบร้อย!")
+        else
+            warn("⚠️ ตอนนี้ไม่ได้กำลังสุ่ม")
+        end
+    end
+})
