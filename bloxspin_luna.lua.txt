@@ -1,0 +1,3286 @@
+ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+ 
+local function CreateWindowWithTheme(theme)
+    return Rayfield:CreateWindow({
+        Name = "QuickHacks",
+        LoadingTitle = "BloxSpin",
+        LoadingSubtitle = "by oz",
+        Theme = theme,
+        DisableRayfieldPrompts = true,
+        DisableBuildWarnings = true,
+        ConfigurationSaving = {
+            Enabled = true,
+            FolderName = nil,
+            FileName = "nilo"
+        },
+        Discord = {
+            Enabled = false,
+            Invite = "",
+            RememberJoins = false
+        },
+        KeySystem = false,
+        KeySettings = {
+            Title = "Key Required",
+            Subtitle = "Access Key",
+            Note = "Get your key from Linkversite",
+            FileName = "AccessKey",
+            SaveKey = true,
+            GrabKeyFromSite = false,
+            Key = {""}
+        }
+    })
+end
+
+local Window = CreateWindowWithTheme("Default")
+
+local Tab = Window:CreateTab("Main", nil)
+
+--[[Varibls]]
+
+
+rs = game:GetService("RunService")
+  Players = game:GetService("Players")
+  lp = Players.LocalPlayer
+  
+  VirtualUser = game:GetService("VirtualUser")
+
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Vehicles = workspace:FindFirstChild("Vehicles")
+local Sliders = {}
+   local character = game.Players.LocalPlayer.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = character:FindFirstChild("Humanoid")
+local RunService = game:GetService("RunService")
+local SpeedConnection
+local lp = game.Players.LocalPlayer
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ItemsUI = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("Items"):WaitForChild("ItemsHolder"):WaitForChild("ItemsScrollingFrame")
+local sendRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Send")
+
+local  afkConnection
+local active = false
+local mode = "Character Walk"
+local tweenSpeed = 5
+local puddlesFolder = workspace.Map.Tiles.BurgerPlaceTile.BurgerPlace.Interior.Puddles
+local lastLevel = -1
+local notifiedMissingTool = false
+local notifiedMultipleMops = false
+local isFarming = false
+local validMops = {
+    ["mop"] = true,
+    ["bronze mop"] = true,
+    ["silber mop"] = true,
+    ["gold mop"] = true,
+    ["diamond mop"] = true
+}
+
+
+
+--[[Getgenv Varibls]]
+
+getgenv().AutoPickup = false
+
+ 
+getgenv().AutoDropConfig = getgenv().AutoDropConfig or {}
+getgenv().AutoDropConfig.Enabled = false
+getgenv().AutoDropConfig.Rarities = {
+    Common = false,
+    Uncommon = false,
+    Rare = false,
+    Epic = false,
+    Legendary = false,
+    Omega = false,
+    Elite = false,
+}
+
+getgenv().Players = game:GetService("Players")
+getgenv().LocalPlayer = getgenv().Players.LocalPlayer
+getgenv().crosshairGui = getgenv().LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("CrosshairScreenGui")
+getgenv().crosshairFrame = getgenv().crosshairGui:WaitForChild("CrosshairFrame")
+--[[idk Vrbs]]
+
+ATMModule = require(game.ReplicatedStorage.Modules.Game.ATM.ATM)
+  SliderMinigame = require(game.ReplicatedStorage.Modules.Game.Minigames.SliderMinigame)
+  Net = require(game.ReplicatedStorage.Modules.Core.Net)
+  ItemUtils = require(game.ReplicatedStorage.Modules.Game.Inventory.ItemUtils)
+  Data = require(game.ReplicatedStorage.Modules.Core.Data)
+  HackTools = require(game.ReplicatedStorage.Modules.Game.ATM.ATMUI).valid_hack_tools
+  Char = require(game.ReplicatedStorage.Modules.Core.Char)
+  HRP = Char.get_hrp
+  AutoFarm = false
+  DelayBetweenHacks = 2
+
+--[[Function vrbls]]
+
+local function notify(title, text)
+    Rayfield:Notify({
+        Title = title,
+        Content = text,
+        Duration = 0.5,
+        Image = 'check'
+    })
+end
+
+
+local CounterTable = (function()
+    for _, Obj in getgc(true) do
+        if typeof(Obj) == "table" and rawget(Obj, "event") and rawget(Obj, "func") then
+            return Obj
+        end
+    end
+end)()
+
+local function CallRemote(remote, ...)
+    if not CounterTable or not remote then return end
+    local args = {...}
+    local success, result = pcall(function()
+        if remote.ClassName == "RemoteEvent" then
+            CounterTable.event += 1
+            remote:FireServer(CounterTable.event, unpack(args))
+        elseif remote.ClassName == "RemoteFunction" then
+            CounterTable.func += 1
+            return remote:InvokeServer(CounterTable.func, unpack(args))
+        end
+    end)
+    return result
+end
+
+
+
+
+print('[QUICKHACKS]','=', 'loaded all Vlbs')
+
+
+
+Rayfield:Notify({
+    Title = "Welcome!",
+    Content = "Thanks for using QuickHacks, " .. LocalPlayer.Name .. " Enjoy!",
+    Duration = 1.5,
+    Image = 'hand'
+})
+
+
+
+Tab:CreateSlider({
+    Name = "Respawn Time",
+    Range = {0, 10},
+    Increment = 1,
+    Suffix = "Sec",
+    CurrentValue = 6,
+    Flag = "RpTe",
+    Callback = function(Value)
+        Players.RespawnTime = Value
+    end,
+})
+
+Tab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {16, 30}, 
+   Increment = 1,
+   Suffix = "Speed",
+   CurrentValue = 16,
+   Flag = "WalkSpeed",
+   Callback = function(Value)
+      game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+   end,
+})
+
+Tab:CreateSlider({
+   Name = "JumpPower",
+   Range = {50, 150}, 
+   Increment = 10,
+   Suffix = "Power",
+   CurrentValue = 16,
+   Flag = "JumpPower",
+   Callback = function(Value)
+      game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+      
+      if LocalPlayer and LocalPlayer.Character and Humanoid 
+      then Humanoid.UseJumpPower = true
+          
+          if Humanoid.UseJumpPower == false then Humanoid.UseJumpPower = true
+              end 
+      end
+   end,
+})
+
+
+
+  
+
+ 
+
+Tab:CreateSlider({
+    Name = "Speed Boost",
+    Range = {0, 7},
+    Increment = 1,
+    CurrentValue = 0,
+    Flag = "SpeedBoost",
+    Callback = function(Value)
+        if SpeedConnection then
+            SpeedConnection:Disconnect()
+            SpeedConnection = nil
+        end
+
+        if Value > 0 then
+            SpeedConnection = RunService.Heartbeat:Connect(function(DeltaTime)
+                local Character = LocalPlayer.Character
+                if not Character then return end
+
+                
+                if not Humanoid then return end
+
+                local MoveDirection = Humanoid.MoveDirection
+                if MoveDirection.Magnitude > 0 then
+                    Character:TranslateBy(MoveDirection * DeltaTime * Value * 2.5)
+                end
+            end)
+        end
+    end,
+})
+
+  
+ 
+ getgenv().SpooferName = {
+    Username = "",
+    Level = ""
+}
+
+
+
+local UsernameLabel_SpoofNL = Tab:CreateLabel("Username: ")
+local LevelLabel_SpoofNL = Tab:CreateLabel("Level: ")
+
+local function spoofText_SpoofNL(char_SpoofNL)
+    local hrp_SpoofNL = char_SpoofNL:WaitForChild("HumanoidRootPart", 5)
+    local gui_SpoofNL = hrp_SpoofNL and hrp_SpoofNL:FindFirstChild("CharacterBillboardGui")
+    if gui_SpoofNL then
+        local playerName_SpoofNL = gui_SpoofNL:FindFirstChild("PlayerName")
+        local levelText_SpoofNL = playerName_SpoofNL and playerName_SpoofNL:FindFirstChild("LevelImage") and playerName_SpoofNL.LevelImage:FindFirstChild("LevelText")
+        if playerName_SpoofNL then
+            playerName_SpoofNL.Text = getgenv().SpooferName.Username
+            UsernameLabel_SpoofNL:Set("Username: " .. playerName_SpoofNL.Text)
+        end
+        if levelText_SpoofNL then
+            levelText_SpoofNL.Text = getgenv().SpooferName.Level
+            LevelLabel_SpoofNL:Set("Level: " .. levelText_SpoofNL.Text)
+        end
+    end
+end
+
+local function captureInitial_SpoofNL(char_SpoofNL)
+    local hrp_SpoofNL = char_SpoofNL:WaitForChild("HumanoidRootPart", 5)
+    local gui_SpoofNL = hrp_SpoofNL and hrp_SpoofNL:FindFirstChild("CharacterBillboardGui")
+    if gui_SpoofNL then
+        local playerName_SpoofNL = gui_SpoofNL:FindFirstChild("PlayerName")
+        local levelText_SpoofNL = playerName_SpoofNL and playerName_SpoofNL:FindFirstChild("LevelImage") and playerName_SpoofNL.LevelImage:FindFirstChild("LevelText")
+        if playerName_SpoofNL then
+            getgenv().SpooferName.Username = playerName_SpoofNL.Text
+            UsernameLabel_SpoofNL:Set("Username: " .. playerName_SpoofNL.Text)
+        end
+        if levelText_SpoofNL then
+            getgenv().SpooferName.Level = levelText_SpoofNL.Text
+            LevelLabel_SpoofNL:Set("Level: " .. levelText_SpoofNL.Text)
+        end
+    end
+end
+
+local function handleCharacter_SpoofNL(char_SpoofNL)
+    captureInitial_SpoofNL(char_SpoofNL)
+    spoofText_SpoofNL(char_SpoofNL)
+end
+
+Tab:CreateInput({
+    Name = "Set Username",
+    PlaceholderText = "Enter new username",
+    RemoveTextAfterFocusLost = true,
+    Callback = function(Text_SpoofNL)
+        getgenv().SpooferName.Username = Text_SpoofNL
+        UsernameLabel_SpoofNL:Set("Username: " .. Text_SpoofNL)
+        local char_SpoofNL = game.Players.LocalPlayer.Character
+        if char_SpoofNL then spoofText_SpoofNL(char_SpoofNL) end
+    end
+})
+
+Tab:CreateInput({
+    Name = "Set Level",
+    PlaceholderText = "Enter new level",
+    RemoveTextAfterFocusLost = true,
+    Callback = function(Text_SpoofNL)
+        getgenv().SpooferName.Level = Text_SpoofNL
+        LevelLabel_SpoofNL:Set("Level: " .. Text_SpoofNL)
+        local char_SpoofNL = game.Players.LocalPlayer.Character
+        if char_SpoofNL then spoofText_SpoofNL(char_SpoofNL) end
+    end
+})
+
+local lp = game.Players.LocalPlayer
+if lp.Character then handleCharacter_SpoofNL(lp.Character) end
+lp.CharacterAdded:Connect(function(char_SpoofNL)
+    char_SpoofNL:WaitForChild("HumanoidRootPart")
+    spoofText_SpoofNL(char_SpoofNL)
+end)
+
+
+
+
+getgenv().settingsCOSTUMCROSSHAIR = getgenv().settingsCOSTUMCROSSHAIR or "rbxassetid://11759202791"
+
+if not isfolder("QuickHacks") then makefolder("QuickHacks") end
+if not isfile("QuickHacks/CostumCrossHair.txt") then writefile("QuickHacks/CostumCrossHair.txt", "") end
+
+
+
+ 
+getgenv().getCrosshairList = function()
+    local data = readfile("QuickHacks/CostumCrossHair.txt")
+    local list = {}
+    for line in string.gmatch(data, "[^\r\n]+") do
+        if string.match(line, "^rbxassetid://%d+$") then
+            table.insert(list, tostring(line))
+        end
+    end
+    return list
+end
+
+getgenv().addCrosshairToFile = function(asset)
+    local file = readfile("QuickHacks/CostumCrossHair.txt")
+    if not string.find(file, asset, 1, true) then
+        appendfile("QuickHacks/CostumCrossHair.txt", asset .. "\n")
+    end
+end
+
+getgenv().applyCrosshair = function(asset)
+    asset = tostring(asset)
+    for _, element in ipairs(getgenv().crosshairFrame:GetChildren()) do
+        if element.Name == "Frame1" or element.Name == "Frame2" then
+            element:Destroy()
+        end
+    end
+    local existing = getgenv().crosshairFrame:FindFirstChild("CustomCrosshair")
+    if existing then existing:Destroy() end
+    local crosshairImage = Instance.new("ImageLabel")
+    crosshairImage.Name = "CustomCrosshair"
+    crosshairImage.Size = UDim2.new(0, 40, 0, 40)
+    crosshairImage.Position = UDim2.new(0.5, -20, 0.5, -20)
+    crosshairImage.BackgroundTransparency = 1
+    crosshairImage.Image = asset
+    crosshairImage.Parent = getgenv().crosshairFrame
+end
+
+getgenv().selectedCrosshair = tostring(getgenv().settingsCOSTUMCROSSHAIR)
+
+Tab:CreateDropdown({
+    Name = "Config (File)",
+    Options = getgenv().getCrosshairList(),
+    CurrentOption = getgenv().selectedCrosshair,
+    Flag = "CrosshairDropdown",
+    Callback = function(option)
+        getgenv().selectedCrosshair = tostring(option[1])
+        getgenv().applyCrosshair(getgenv().selectedCrosshair)
+    end,
+})
+
+Tab:CreateInput({
+    Name = "Add Custom Crosshair",
+    CurrentValue = "",
+    PlaceholderText = "rbxassetid:// or just numbers",
+    RemoveTextAfterFocusLost = false,
+    Flag = "CrosshairInput",
+    Callback = function(Text)
+        if tonumber(Text) and not string.find(Text, "rbxassetid://") then
+            Text = "rbxassetid://" .. Text
+        end
+        if string.match(Text, "^rbxassetid://%d+$") then
+            getgenv().selectedCrosshair = Text
+            getgenv().addCrosshairToFile(Text)
+            local newList = getgenv().getCrosshairList()
+            dropdown:Refresh(newList)
+            dropdown:Set({Text})
+        end
+    end,
+})
+
+Tab:CreateButton({
+    Name = "Apply Crosshair (Input)",
+    Callback = function()
+        getgenv().applyCrosshair(getgenv().selectedCrosshair)
+    end,
+})
+
+Tab:CreateButton({
+    Name = "Reload Dropdown",
+    Callback = function()
+        local refreshed = getgenv().getCrosshairList()
+        dropdown:Refresh(refreshed)
+    end,
+})
+
+
+
+getgenv().safeDeathEnabled = false
+getgenv().platformEnabled = false
+getgenv().backTpHpPercent = 30
+getgenv().isSafeMode = false
+getgenv().originalCFrame = nil
+getgenv().platform = nil
+getgenv().originalCanCollide = {}
+getgenv().safeHeight = 266.5
+getgenv().isReturning = false
+getgenv().healthConnection = nil
+
+
+function CPF(position)
+    if platform then platform:Destroy() end
+    platform = Instance.new("Part")
+    platform.Size = Vector3.new(30, 1, 30)
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.Material = Enum.Material.SmoothPlastic
+    platform.BrickColor = BrickColor.new("Really blue")
+    platform.Transparency = 1
+    platform.Position = position
+    platform.Parent = workspace
+end
+
+function SavePos()
+    if not lp.Character then return end
+    local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    originalCFrame = hrp.CFrame
+    originalCanCollide = {}
+    for _, part in pairs(lp.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            originalCanCollide[part] = part.CanCollide
+        end
+    end
+end
+
+function TP(position)
+    if not lp.Character then return end
+    local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    hrp.CFrame = CFrame.new(position)
+    for _, part in pairs(lp.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end
+
+function Restore()
+    if not lp.Character then return end
+    local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if originalCFrame then
+        hrp.CFrame = originalCFrame
+        for part, collide in pairs(originalCanCollide) do
+            if part then part.CanCollide = collide end
+        end
+    end
+    originalCFrame = nil
+    originalCanCollide = {}
+end
+
+function Monitor()
+    if healthConnection then healthConnection:Disconnect() end
+    healthConnection = game:GetService("RunService").RenderStepped:Connect(function()
+        if not safeDeathEnabled then return end
+        if not lp.Character or not lp.Character:FindFirstChild("Humanoid") or not lp.Character:FindFirstChild("HumanoidRootPart") then return end
+        local humanoid = lp.Character.Humanoid
+        local hrp = lp.Character.HumanoidRootPart
+        local currentHealthPercent = (humanoid.Health / humanoid.MaxHealth) * 100
+        if not isSafeMode and not isReturning and currentHealthPercent <= 18.45 then
+            isSafeMode = true
+            SavePos()
+            local safeX, safeZ = hrp.Position.X, hrp.Position.Z
+            if platformEnabled then CPF(Vector3.new(safeX, safeHeight, safeZ)) end
+            if platformEnabled and platform then
+                TP(Vector3.new(platform.Position.X, platform.Position.Y + 12, platform.Position.Z))
+            else
+                TP(Vector3.new(hrp.Position.X, safeHeight + 12, hrp.Position.Z))
+            end
+        elseif isSafeMode and not isReturning then
+            if platformEnabled and platform then
+                TP(Vector3.new(platform.Position.X, platform.Position.Y + 12, platform.Position.Z))
+            else
+                TP(Vector3.new(hrp.Position.X, safeHeight + 12, hrp.Position.Z))
+            end
+            if currentHealthPercent >= backTpHpPercent then
+                isSafeMode = false
+                isReturning = true
+                Restore()
+                if platform then platform:Destroy() platform = nil end
+                task.spawn(function()
+                    wait(0.5)
+                    isReturning = false
+                end)
+            end
+        end
+    end)
+end
+
+Tab:CreateToggle({
+    Name = "Anti-Kill [Beta]",
+    CurrentValue = false,
+    Flag = "AntiKill Beta",
+    Callback = function(enabled)
+        safeDeathEnabled = enabled
+        if enabled then
+            Monitor()
+        elseif healthConnection then
+            healthConnection:Disconnect()
+            healthConnection = nil
+            if isSafeMode then
+                isSafeMode = false
+                isReturning = false
+                Restore()
+            end
+            if platform then
+                platform:Destroy()
+                platform = nil
+            end
+        end
+    end
+})
+
+Tab:CreateToggle({
+    Name = "Platform",
+    CurrentValue = false,
+    Flag = "Platform",
+    Callback = function(enabled)
+        platformEnabled = enabled
+        if isSafeMode and safeDeathEnabled then
+            local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                if enabled and not platform then
+                    CPF(Vector3.new(hrp.Position.X, safeHeight, hrp.Position.Z))
+                elseif not enabled and platform then
+                    platform:Destroy()
+                    platform = nil
+                end
+            end
+        end
+    end
+})
+
+Tab:CreateSlider({
+    Name = "Back-TP HP %",
+    Range = {1, 100},
+    Increment = 1,
+    Suffix = "%",
+    CurrentValue = 30,
+    Flag = "BackTP",
+    Callback = function(value)
+        backTpHpPercent = value
+    end
+})
+  
+
+  
+ getgenv().SettingsAUTOFINISH = getgenv().SettingsAUTOFINISH or {}
+
+ 
+local AUTOFINISH = {
+    Enabled = false,
+    SafezoneCheck = true,
+    Blacklist = {},
+    AllPlayers = {},
+    Dropdown = nil
+}
+
+getgenv().QuickCashAUTOFINISH = AUTOFINISH.Enabled
+getgenv().SafezoneCheckAUTOFINISH = AUTOFINISH.SafezoneCheck
+getgenv().SettingsAUTOFINISH.BlacklistAUTOFINISH = AUTOFINISH.Blacklist
+
+Tab:CreateToggle({
+    Name = "AUTO FINISH",
+    CurrentValue = AUTOFINISH.Enabled,
+    Flag = "AUTOFINISHFlag",
+    Callback = function(v)
+        getgenv().QuickCashAUTOFINISH = v
+    end,
+})
+
+Tab:CreateToggle({
+    Name = "Safezone Check",
+    CurrentValue = AUTOFINISH.SafezoneCheck,
+    Flag = "SafezoneCheckFlag",
+    Callback = function(v)
+        getgenv().SafezoneCheckAUTOFINISH = v
+    end,
+})
+
+AUTOFINISH.Dropdown = Tab:CreateDropdown({
+    Name = "Blacklist Players",
+    Options = {},
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "BlacklistDropdownAUTOFINISH",
+    Callback = function(opt)
+        getgenv().SettingsAUTOFINISH.BlacklistAUTOFINISH = opt
+    end
+})
+getgenv().SettingsAUTOFINISH.DropdownAUTOFINISH = AUTOFINISH.Dropdown
+
+getgenv().SettingsAUTOFINISH.UpdatePlayerListAUTOFINISH = function()
+    local names = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(names, p.Name)
+        end
+    end
+    AUTOFINISH.AllPlayers = names
+    AUTOFINISH.Dropdown:Refresh(names)
+end
+
+getgenv().SettingsAUTOFINISH.PlayerAddedAUTOFINISH = Players.PlayerAdded:Connect(function()
+    task.wait(0.1)
+    getgenv().SettingsAUTOFINISH.UpdatePlayerListAUTOFINISH()
+end)
+
+getgenv().SettingsAUTOFINISH.PlayerRemovingAUTOFINISH = Players.PlayerRemoving:Connect(function()
+    task.wait(0.1)
+    getgenv().SettingsAUTOFINISH.UpdatePlayerListAUTOFINISH()
+end)
+
+getgenv().SettingsAUTOFINISH.RunAUTOFINISH = RunService.Heartbeat:Connect(function()
+    if not getgenv().QuickCashAUTOFINISH then return end
+    if not LocalPlayer or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return end
+    if getgenv().SafezoneCheckAUTOFINISH then
+        if LocalPlayer:GetAttribute("IsSafeZoneProtected") == true then return end
+    end
+    for _, target in pairs(Players:GetPlayers()) do
+        if target ~= LocalPlayer and target.Character then
+            if table.find(getgenv().SettingsAUTOFINISH.BlacklistAUTOFINISH, target.Name) then continue end
+            local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                for _, prompt in pairs(hrp:GetChildren()) do
+                    if prompt:IsA("ProximityPrompt") and prompt.Enabled and prompt.Name == "FinishPrompt" then
+                        if (LocalPlayer.Character.PrimaryPart.Position - prompt.Parent.Position).Magnitude <= 12.5 then
+                            prompt.RequiresLineOfSight = false
+                            prompt.MaxActivationDistance = 12.5
+                            prompt.HoldDuration = 0
+                            prompt:InputHoldBegin()
+                            task.wait(0.01)
+                            prompt:InputHoldEnd()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+getgenv().SettingsAUTOFINISH.UpdatePlayerListAUTOFINISH()
+
+
+
+
+
+getgenv().Configuration = getgenv().Configuration or {
+    SpinBot = false,
+    SpinPart = "HumanoidRootPart",
+    SpinBotVelocity = 20
+}
+
+Tab:CreateToggle({
+    Name = "Enable SpinBot",
+    CurrentValue = getgenv().Configuration.SpinBot,
+    Flag = "SpinBotToggle",
+    Callback = function(Value)
+        getgenv().Configuration.SpinBot = Value
+    end,
+})
+
+Tab:CreateSlider({
+    Name = "Spin Speed",
+    Range = {1, 50},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = getgenv().Configuration.SpinBotVelocity,
+    Flag = "SpinSpeedSlider",
+    Callback = function(Value)
+        getgenv().Configuration.SpinBotVelocity = Value
+    end,
+})
+
+Tab:CreateDropdown({
+    Name = "Spin Part",
+    Options = {"HumanoidRootPart", "Head", "LowerTorso"},
+    CurrentOption = {getgenv().Configuration.SpinPart},
+    MultipleOptions = false,
+    Flag = "SpinPartDropdown",
+    Callback = function(Option)
+        getgenv().Configuration.SpinPart = Option[1]
+    end,
+})
+
+getgenv().spinhandler = function()
+    local Character = game.Players.LocalPlayer and game.Players.LocalPlayer.Character
+    local SpinPart = Character and Character:FindFirstChild(getgenv().Configuration.SpinPart)
+    if getgenv().Configuration.SpinBot and SpinPart and SpinPart:IsA("BasePart") then
+        SpinPart.CFrame = SpinPart.CFrame * CFrame.fromEulerAnglesXYZ(0, math.rad(getgenv().Configuration.SpinBotVelocity), 0)
+    end
+end
+
+game:GetService("RunService").RenderStepped:Connect(getgenv().spinhandler)
+
+
+  
+     
+  
+getgenv().AutoKillSettingsAUTOKILL = {
+Workspace = cloneref(game:GetService("Workspace")),
+Players = cloneref(game:GetService("Players")),
+LocalPlayer = game:GetService("Players").LocalPlayer,
+ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage")),
+trackingEnabled = false,
+followActive = false,
+followMode = "Character Walk",
+tweenSpeed = 5,
+attackDelay = 0.3,
+maxFollowDistance = 100,
+selectedTool = nil,
+toolDropdown = nil,
+toolList = {},
+lastNotifiedTarget = nil,
+notifiedAttack = nil,
+notifiedTool = nil,
+toolMissingNotified = false,
+playerRoot = nil,
+human = nil,
+moving = false,
+blacklist = {},
+allPlayerNames = {},
+blacklistDropdown = nil,
+stepSize = 2.5,
+toolConnectionBackpack = nil,
+toolConnectionCharacter = nil,
+playerConnectionAdded = nil,
+playerConnectionRemoved = nil
+}
+
+local SettingsAUTOKILL = AutoKillSettingsAUTOKILL
+
+
+ 
+SettingsAUTOKILL.NotifyOnceAUTOKILL = function(id, title, content, state)
+if SettingsAUTOKILL.lastNotifiedTarget == id then return end
+SettingsAUTOKILL.lastNotifiedTarget = id
+Rayfield:Notify({
+Title = title,
+Content = content,
+Duration = 4,
+Image = state and "check" or "x"
+})
+end
+
+SettingsAUTOKILL.tweenToAUTOKILL = function(pos)
+if not SettingsAUTOKILL.playerRoot or SettingsAUTOKILL.moving then return end
+if SettingsAUTOKILL.human and SettingsAUTOKILL.human.Health <= 0 then
+SettingsAUTOKILL.moving = false
+return
+end
+
+SettingsAUTOKILL.moving = true
+local chet = SettingsAUTOKILL.playerRoot.Position.Y
+local target = Vector3.new(pos.X, chet, pos.Z)
+local dist = (target - SettingsAUTOKILL.playerRoot.Position).Magnitude
+
+while dist > SettingsAUTOKILL.stepSize and SettingsAUTOKILL.trackingEnabled and SettingsAUTOKILL.followActive do
+if SettingsAUTOKILL.human and SettingsAUTOKILL.human.Health <= 0 then
+SettingsAUTOKILL.moving = false
+return
+end
+
+local dir = (target - SettingsAUTOKILL.playerRoot.Position).Unit 
+SettingsAUTOKILL.playerRoot.CFrame = CFrame.new(SettingsAUTOKILL.playerRoot.Position + dir * SettingsAUTOKILL.stepSize, SettingsAUTOKILL.playerRoot.Position + dir * 2) 
+task.wait(SettingsAUTOKILL.tweenSpeed/100) 
+dist = (target - SettingsAUTOKILL.playerRoot.Position).Magnitude 
+end
+
+if dist <= SettingsAUTOKILL.stepSize and SettingsAUTOKILL.trackingEnabled and SettingsAUTOKILL.followActive then
+SettingsAUTOKILL.playerRoot.CFrame = CFrame.new(target)
+end
+
+SettingsAUTOKILL.moving = false
+end
+
+SettingsAUTOKILL.GetNearestPlayerAUTOKILL = function(maxDistance)
+local nearestPlayer = nil
+local minDistance = maxDistance
+
+for _, player in pairs(SettingsAUTOKILL.Players:GetPlayers()) do
+if player ~= SettingsAUTOKILL.LocalPlayer and player.UserId ~= SettingsAUTOKILL.LocalPlayer.UserId and not table.find(SettingsAUTOKILL.blacklist, player.Name)
+and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0
+and SettingsAUTOKILL.LocalPlayer.Character and SettingsAUTOKILL.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+
+local dist = (player.Character.HumanoidRootPart.Position - SettingsAUTOKILL.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude 
+if dist < minDistance then 
+minDistance = dist 
+nearestPlayer = player 
+end 
+end 
+end
+
+return nearestPlayer
+end
+
+SettingsAUTOKILL.EquipSelectedToolAUTOKILL = function()
+local character = SettingsAUTOKILL.LocalPlayer.Character
+if not character then return false end
+
+if not SettingsAUTOKILL.selectedTool then
+SettingsAUTOKILL.NotifyOnceAUTOKILL("tool_none", "No Tool Selected", "Please choose a tool", false)
+return false
+end
+
+if character:FindFirstChild(SettingsAUTOKILL.selectedTool) then
+SettingsAUTOKILL.toolMissingNotified = false
+return true
+end
+
+for _, tool in ipairs(SettingsAUTOKILL.LocalPlayer.Backpack:GetChildren()) do
+if tool:IsA("Tool") and tool.Name == SettingsAUTOKILL.selectedTool then
+character.Humanoid:EquipTool(tool)
+if SettingsAUTOKILL.notifiedTool ~= SettingsAUTOKILL.selectedTool then
+SettingsAUTOKILL.NotifyOnceAUTOKILL("tool" .. SettingsAUTOKILL.selectedTool, "Tool Selected", SettingsAUTOKILL.selectedTool, true)
+SettingsAUTOKILL.notifiedTool = SettingsAUTOKILL.selectedTool
+end
+SettingsAUTOKILL.toolMissingNotified = false
+return true
+end
+end
+
+if not SettingsAUTOKILL.toolMissingNotified then
+SettingsAUTOKILL.NotifyOnceAUTOKILL("missing_" .. SettingsAUTOKILL.selectedTool, "Tool Not Found", SettingsAUTOKILL.selectedTool, false)
+SettingsAUTOKILL.toolMissingNotified = true
+end
+
+return false
+end
+
+SettingsAUTOKILL.AttackTargetAUTOKILL = function(targetPlayer)
+local character = SettingsAUTOKILL.LocalPlayer.Character
+if not character or not SettingsAUTOKILL.selectedTool then return end
+
+local tool = character:FindFirstChild(SettingsAUTOKILL.selectedTool)
+if not tool then return end
+
+local hrp = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+
+if SettingsAUTOKILL.notifiedAttack ~= targetPlayer.Name then
+SettingsAUTOKILL.NotifyOnceAUTOKILL("atk_" .. targetPlayer.Name, "Attack", "Attacking " .. targetPlayer.Name, true)
+SettingsAUTOKILL.notifiedAttack = targetPlayer.Name
+end
+
+CallRemote(sendRemote, "melee_attack", tool, {targetPlayer}, hrp.CFrame, math.random())
+end
+
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL = function()
+local tools = {}
+for _, tool in ipairs(SettingsAUTOKILL.LocalPlayer.Backpack:GetChildren()) do
+if tool:IsA("Tool") then
+table.insert(tools, tool.Name)
+end
+end
+if #tools > 0 then
+SettingsAUTOKILL.selectedTool = SettingsAUTOKILL.selectedTool or tools[1]
+SettingsAUTOKILL.toolList = tools
+SettingsAUTOKILL.toolDropdown:Refresh(SettingsAUTOKILL.toolList)
+SettingsAUTOKILL.toolDropdown:Set({SettingsAUTOKILL.selectedTool})
+end
+end
+
+SettingsAUTOKILL.UpdatePlayerListAUTOKILL = function()
+local names = {}
+for _, player in ipairs(SettingsAUTOKILL.Players:GetPlayers()) do
+if player ~= SettingsAUTOKILL.LocalPlayer and player.Name ~= SettingsAUTOKILL.LocalPlayer.Name then
+table.insert(names, player.Name)
+end
+end
+SettingsAUTOKILL.allPlayerNames = names
+SettingsAUTOKILL.blacklistDropdown:Refresh(SettingsAUTOKILL.allPlayerNames)
+end
+
+
+Tab:CreateToggle({
+Name = "AutoKill",
+CurrentValue = false,
+Flag = "AutoKillT",
+Callback = function(Value)
+SettingsAUTOKILL.trackingEnabled = Value
+SettingsAUTOKILL.followActive = Value
+SettingsAUTOKILL.NotifyOnceAUTOKILL( "Auto Follow", Value and "Enabled" or "Disabled", Value)
+end,
+})
+
+SettingsAUTOKILL.toolDropdown = Tab:CreateDropdown({
+Name = "Choose Weapon",
+Options = {},
+CurrentOption = {},
+MultipleOptions = false,
+Flag = "ToolSelector",
+Callback = function(opt)
+SettingsAUTOKILL.selectedTool = opt[1]
+end
+})
+
+Tab:CreateDropdown({
+Name = "Follow Method",
+Options = {"Character Walk", "Tween Teleport"},
+CurrentOption = {"Character Walk"},
+MultipleOptions = false,
+Flag = "FM",
+Callback = function(Options)
+SettingsAUTOKILL.followMode = Options[1]
+end,
+})
+
+Tab:CreateSlider({
+Name = "Tween Speed",
+Range = {1, 15},
+Increment = 1,
+Suffix = "s",
+CurrentValue = 5,
+Flag = "TweenSpeedSlider",
+Callback = function(Value)
+SettingsAUTOKILL.tweenSpeed = Value
+end,
+})
+
+Tab:CreateSlider({
+Name = "Attack Delay",
+Range = {0, 1},
+Increment = 0.05,
+Suffix = "s",
+CurrentValue = 0.3,
+Flag = "AttackDelaySlider",
+Callback = function(Value)
+SettingsAUTOKILL.attackDelay = Value
+end,
+})
+
+Tab:CreateSlider({
+Name = "Max Distance",
+Range = {0, 1000},
+Increment = 10,
+Suffix = " studs",
+CurrentValue = 100,
+Flag = "maxdistanceS",
+Callback = function(Value)
+SettingsAUTOKILL.maxFollowDistance = Value
+end,
+})
+
+Tab:CreateKeybind({
+Name = "Toggle Follow Key",
+CurrentKeybind = "Q",
+HoldToInteract = false,
+Flag = "KeybindFollowkey",
+Callback = function(key)
+if typeof(key) == "EnumItem" then key = key.Name end
+key = string.upper(tostring(key))
+if SettingsAUTOKILL.trackingEnabled then
+SettingsAUTOKILL.followActive = not SettingsAUTOKILL.followActive
+Rayfield:Notify({
+Title = "Auto Follow",
+Content = SettingsAUTOKILL.followActive and "Enabled" or "Disabled",
+Duration = 5,
+Image = SettingsAUTOKILL.followActive and "check" or "x"
+})
+end
+end,
+})
+
+SettingsAUTOKILL.blacklistDropdown = Tab:CreateDropdown({
+Name = "Blacklist Players",
+Options = {},
+CurrentOption = {},
+MultipleOptions = true,
+Flag = "BlacklistDropdown",
+Callback = function(opt)
+SettingsAUTOKILL.blacklist = opt
+end
+})
+
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL()
+SettingsAUTOKILL.UpdatePlayerListAUTOKILL()
+
+if SettingsAUTOKILL.toolConnectionBackpack then
+SettingsAUTOKILL.toolConnectionBackpack:Disconnect()
+end
+
+if SettingsAUTOKILL.toolConnectionCharacter then
+SettingsAUTOKILL.toolConnectionCharacter:Disconnect()
+end
+
+SettingsAUTOKILL.toolConnectionBackpackAUTOKILL = SettingsAUTOKILL.LocalPlayer.Backpack.ChildAdded:Connect(function()
+task.wait(0.1)
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL()
+end)
+
+SettingsAUTOKILL.toolConnectionBackpackAUTOKILL = SettingsAUTOKILL.LocalPlayer.Backpack.ChildRemoved:Connect(function()
+task.wait(0.1)
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL()
+end)
+
+if SettingsAUTOKILL.LocalPlayer.Character then
+SettingsAUTOKILL.toolConnectionCharacterAUTOKILL = SettingsAUTOKILL.LocalPlayer.Character.ChildAdded:Connect(function(child)
+if child:IsA("Tool") then
+task.wait(0.1)
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL()
+end
+end)
+
+SettingsAUTOKILL.toolConnectionCharacterAUTOKILL = SettingsAUTOKILL.LocalPlayer.Character.ChildRemoved:Connect(function(child)
+if child:IsA("Tool") then
+task.wait(0.1)
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL()
+end
+end)
+end
+
+SettingsAUTOKILL.LocalPlayer.CharacterAdded:Connect(function(character)
+if SettingsAUTOKILL.toolConnectionCharacter then
+SettingsAUTOKILL.toolConnectionCharacter:Disconnect()
+end
+
+SettingsAUTOKILL.toolConnectionCharacterAUTOKILL = character.ChildAdded:Connect(function(child)
+if child:IsA("Tool") then
+task.wait(0.1)
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL()
+end
+end)
+
+SettingsAUTOKILL.toolConnectionCharacterAUTOKILL = character.ChildRemoved:Connect(function(child)
+if child:IsA("Tool") then
+task.wait(0.1)
+SettingsAUTOKILL.UpdateWeaponListAUTOKILL()
+end
+end)
+end)
+
+SettingsAUTOKILL.playerConnectionAddedAUTOKILL = SettingsAUTOKILL.Players.PlayerAdded:Connect(function()
+task.wait(0.1)
+SettingsAUTOKILL.UpdatePlayerListAUTOKILL()
+end)
+
+SettingsAUTOKILL.playerConnectionRemovedAUTOKILL = SettingsAUTOKILL.Players.PlayerRemoving:Connect(function()
+task.wait(0.1)
+SettingsAUTOKILL.UpdatePlayerListAUTOKILL()
+end)
+
+spawn(function()
+while task.wait(SettingsAUTOKILL.attackDelay) do
+local character = SettingsAUTOKILL.LocalPlayer.Character
+if not SettingsAUTOKILL.trackingEnabled or not SettingsAUTOKILL.followActive or not character or not character:FindFirstChild("HumanoidRootPart") then
+if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChildOfClass("Humanoid") then
+character:FindFirstChildOfClass("Humanoid"):MoveTo(character.HumanoidRootPart.Position)
+end
+continue
+end
+
+local target = SettingsAUTOKILL.GetNearestPlayerAUTOKILL(SettingsAUTOKILL.maxFollowDistance)
+if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then continue end
+
+SettingsAUTOKILL.playerRoot = character:FindFirstChild("HumanoidRootPart") 
+SettingsAUTOKILL.human = character:FindFirstChildOfClass("Humanoid") 
+if SettingsAUTOKILL.followMode == "Character Walk" then 
+local humanoid = character:FindFirstChildOfClass("Humanoid") 
+if humanoid then 
+humanoid:MoveTo(target.Character.HumanoidRootPart.Position) 
+SettingsAUTOKILL.NotifyOnceAUTOKILL("move_" .. target.Name, "Follow", "Walking to: " .. target.Name, true) 
+end 
+elseif SettingsAUTOKILL.followMode == "Tween Teleport" then 
+SettingsAUTOKILL.tweenToAUTOKILL(target.Character.HumanoidRootPart.Position) 
+SettingsAUTOKILL.NotifyOnceAUTOKILL("tween_" .. target.Name, "Follow", "Tweening to: " .. target.Name, true) 
+end 
+if SettingsAUTOKILL.EquipSelectedToolAUTOKILL() then 
+SettingsAUTOKILL.AttackTargetAUTOKILL(target) 
+end 
+end
+end)
+
+
+ 
+     
+         
+
+
+
+
+
+
+
+local NoWallsEnabled = false
+local Walls = {}
+local WallsParent = {}
+local objectsToRemove = {}
+
+local function deepFind(parent, name)
+    for _, obj in ipairs(parent:GetDescendants()) do
+        if obj:IsA("Instance") and obj:GetFullName() == name then
+            return obj
+        end
+    end
+    return nil
+end
+
+local function removeWalls()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+            if string.match(obj.Name:lower(), "wall") or obj.Size.Y > 8 then
+                if not Walls[obj] then
+                    Walls[obj] = obj
+                    WallsParent[obj] = obj.Parent
+                    obj.Parent = nil
+                end
+            end
+        end
+    end
+    
+    for _, path in ipairs(objectsToRemove) do
+        local obj = deepFind(workspace, path)
+        if obj then
+            obj:Destroy()
+        end
+    end
+end
+
+local function restoreWalls()
+    for wall, parent in pairs(WallsParent) do
+        if wall and parent then
+            wall.Parent = parent
+        end
+    end
+    Walls = {}
+    WallsParent = {}
+end
+
+Tab:CreateToggle({
+    Name = "Destroy Walls",
+    CurrentValue = false,
+    Flag = "DWALLS",
+    Callback = function(Value)
+        NoWallsEnabled = Value
+        if NoWallsEnabled then
+            removeWalls()
+        else
+            restoreWalls()
+        end
+    end,
+})
+
+
+
+ 
+
+ 
+function gni()
+    
+    
+    if not hrp then return end
+    local closest, dist = nil, 5
+    for _, model in ipairs(game.Workspace.DroppedItems:GetChildren()) do
+        if model:IsA("Model") then
+            local part = model:FindFirstChild("PickUpZone")
+            if part and part:IsA("BasePart") then
+                local d = (part.Position - hrp.Position).Magnitude
+                if d < dist then
+                    closest = model
+                    dist = d
+                end
+            end
+        end
+    end
+    return closest
+end
+
+
+Tab:CreateToggle({
+    Name = "Auto Pickup Items",
+    CurrentValue = false,
+    Callback = function(state)
+        getgenv().AutoPickup = state
+    end
+})
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if getgenv().AutoPickup then
+            local item = gni()
+            if item then
+                CallRemote(sendRemote, "pickup_dropped_item", item)
+                Rayfield:Notify({
+                    Title = "Spamming Remote",
+                    Content = "Tool: " .. item.Name,
+                    Duration = 0.2,
+                    Image = "check",
+                })
+            end
+        end
+    end
+end)
+
+
+
+Tab:CreateToggle({
+    Name = "Enable Auto Drop",
+    CurrentValue = getgenv().AutoDropConfig.Enabled,
+    Flag = "AutoDropToggle",
+    Callback = function(Value)
+        getgenv().AutoDropConfig.Enabled = Value
+    end,
+})
+
+
+local rarities = {}
+for rarity, _ in pairs(getgenv().AutoDropConfig.Rarities) do
+    table.insert(rarities, rarity)
+end
+
+Tab:CreateDropdown({
+    Name = "Select Rarities to Drop",
+    Options = rarities,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "DropRarities",
+    Callback = function(selected)
+        for rarity, _ in pairs(getgenv().AutoDropConfig.Rarities) do
+            getgenv().AutoDropConfig.Rarities[rarity] = table.find(selected, rarity) and true or false
+        end
+    end,
+})
+
+
+
+
+
+
+
+
+local function findItemInFolders(itemUIName)
+    local folders = {
+        ReplicatedStorage.Items.gun,
+        ReplicatedStorage.Items.melee,
+        ReplicatedStorage.Items.misc,
+        ReplicatedStorage.Items.throwable,
+        ReplicatedStorage.Items.consumable
+    }
+
+    for _, folder in ipairs(folders) do
+        for _, item in ipairs(folder:GetChildren()) do
+            local uiName = item:FindFirstChild("UIName")
+            if uiName and uiName.Value == itemUIName then
+                return item
+            end
+            if item.Name == itemUIName then
+                return item
+            end
+        end
+    end
+
+    return nil
+end
+
+local function pinv()
+    for _, v in pairs(ItemsUI:GetChildren()) do
+        if v:IsA("ImageButton") or v:IsA("ImageLabel") then
+            local nameLabel = v:FindFirstChild("ItemName")
+            local countLabel = v:FindFirstChild("ItemCount")
+
+            if nameLabel and countLabel then
+                local itemUIName = nameLabel.Text
+                local count = tonumber(countLabel.Text:match("%d+"))
+                local item = findItemInFolders(itemUIName)
+                if item then
+                    local rarity = item:GetAttribute("RarityName")
+                    if getgenv().AutoDropConfig.Rarities[rarity] then
+                        CallRemote(sendRemote, "drop_item", v.Name, count)
+                        notify("Dropped", itemUIName .. " x" .. count)
+                    end
+                end
+            end
+        end
+    end
+
+    for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local rarity = tool:GetAttribute("RarityName")
+            if rarity and getgenv().AutoDropConfig.Rarities[rarity] then
+                CallRemote(sendRemote, "drop_item", tool.Name, 1)
+                notify("Dropped", tool.Name)
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while true do
+        if getgenv().AutoDropConfig.Enabled then
+            pinv()
+        end
+        wait(math.random(2,3))
+    end
+end)
+
+
+local Tab = Window:CreateTab("Aimbot", nil)
+
+
+  
+ 
+local MaxDistance = 100 local Aimbotenabled = false local Aimbotkey = nil local FriendCheck = false local TarPat = "Head" local teamCheck = false local WallCheck = false local PFector = 0
+
+local RunService = game:GetService("RunService") local Players = game:GetService("Players") local Cam = game.Workspace.CurrentCamera local UserInputService = game:GetService("UserInputService")
+
+local function updateFlist() local localPlayer = Players.LocalPlayer if localPlayer then local friendCache = {} for _, player in ipairs(Players:GetPlayers()) do if player ~= localPlayer and localPlayer:IsFriendsWith(player.UserId) then friendCache[player.UserId] = true end end return friendCache end return {} end
+
+Players.PlayerAdded:Connect(updateFlist) Players.PlayerRemoving:Connect(updateFlist)
+
+local function isPlayerAlive(player) if not player.Character then return false end local humanoid = player.Character:FindFirstChild("Humanoid") return humanoid and humanoid.Health > 0 end
+
+local function isPlayerHitable(part) local origin = Cam.CFrame.Position local target = part.Position local raycastParams = RaycastParams.new() raycastParams.FilterDescendantsInstances = {Players.LocalPlayer.Character} raycastParams.FilterType = Enum.RaycastFilterType.Blacklist local result = workspace:Raycast(origin, (target - origin).Unit * MaxDistance, raycastParams) return result == nil or result.Instance:IsDescendantOf(part.Parent) end
+
+local function getnstplayer(trg_part) local nearest = nil local lastDistance = math.huge local localPlayer = Players.LocalPlayer local friendCache = FriendCheck and updateFlist() or {} for _, player in ipairs(Players:GetPlayers()) do if player ~= localPlayer and isPlayerAlive(player) and (not teamCheck or player.Team ~= localPlayer.Team) and (not FriendCheck or not friendCache[player.UserId]) then local character = player.Character if character and character:FindFirstChild(trg_part) then local part = character[trg_part] local distance = (Cam.CFrame.Position - part.Position).Magnitude if distance < lastDistance and distance < MaxDistance then if WallCheck then if isPlayerHitable(part) then lastDistance = distance nearest = player end else lastDistance = distance nearest = player end end end end end return nearest end
+
+local function predictTargetPosition(part) if part and part.Parent:FindFirstChild("HumanoidRootPart") then local velocity = part.Parent.HumanoidRootPart.Velocity return part.Position + (velocity * PFector) end return part.Position end
+
+local function lookAt(target) local lookVector = (target - Cam.CFrame.Position).Unit Cam.CFrame = CFrame.new(Cam.CFrame.Position, Cam.CFrame.Position + lookVector) end
+
+Tab:CreateToggle({ Name = "Aimbot", CurrentValue = false, Flag = "Aimbot", Callback = function(Value) Aimbotenabled = Value end, })
+
+Tab:CreateToggle({ Name = "FriendCheck", CurrentValue = false, Flag = "FriendCheck", Callback = function(Value) FriendCheck = Value end, })
+
+Tab:CreateToggle({ Name = "WallCheck", CurrentValue = false, Flag = "WallCheck", Callback = function(Value) WallCheck = Value end, })
+
+Tab:CreateSlider({ Name = "MaxDistance", Range = {0, 500}, Increment = 10, Suffix = "Studs", CurrentValue = 100, Flag = "MaxDistance", Callback = function(Value) MaxDistance = Value end, })
+
+Tab:CreateDropdown({ Name = "Target Part", Options = {"Head"}, CurrentOption = "Head", MultipleOptions = false, Flag = "TarPat", Callback = function(Option) TarPat = Option end, })
+
+Tab:CreateInput({ Name = "AimbotKey", PlaceholderText = "Enter Key (e.g., Q)", RemoveTextAfterFocusLost = false, Callback = function(inputKey) if inputKey and inputKey:match("^%a$") then Aimbotkey = inputKey:upper() Rayfield:Notify({ Title = "Key Updated", Content = "Aimbot key updated to: " .. Aimbotkey, Duration = 3, }) else Rayfield:Notify({ Title = "Invalid Key", Content = "Please enter a valid single letter key.", Duration = 3, }) end end, })
+
+Tab:CreateSlider({ Name = "Prediction", Range = {0, 0.1}, Increment = 0.01, Suffix = "", CurrentValue = 0, Flag = "PFector", Callback = function(Value) PFector = Value end, })
+
+RunService.RenderStepped:Connect(function() if Aimbotenabled then local closest = getnstplayer(TarPat) if closest and closest.Character and closest.Character:FindFirstChild(TarPat) then local predictedPosition = predictTargetPosition(closest.Character[TarPat]) if predictedPosition then lookAt(predictedPosition) end end end end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed) if not gameProcessed and Aimbotkey and input.KeyCode == Enum.KeyCode[Aimbotkey] then Aimbotenabled = not Aimbotenabled Rayfield:Notify({ Title = "Aimbot", Content = Aimbotenabled and "Enabled" or "Disabled", Duration = 2, }) end end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local Paragraph = Tab:CreateParagraph({Title = "Fov Aimbot", Content = ""})
+local fov = 40
+local maxDistance = 400
+local maxTransparency = 0.5
+local fovEnabled = false
+local wallCheckEnabled = false
+local fovColor = Color3.fromRGB(128, 0, 128)
+local SelectedPart = "Head"
+local noFriendTargeting = false
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Cam = game.Workspace.CurrentCamera
+
+local FOVring = Drawing.new("Circle")
+FOVring.Visible = fovEnabled
+FOVring.Thickness = 2
+FOVring.Color = fovColor
+FOVring.Filled = false
+FOVring.Radius = fov
+FOVring.Position = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+
+local function updateDrawings()
+    FOVring.Position = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+end
+
+local function lookAt(target)
+    local lookVector = (target - Cam.CFrame.Position).unit
+    Cam.CFrame = CFrame.new(Cam.CFrame.Position, Cam.CFrame.Position + lookVector)
+end
+
+local function isPlayerAlive(player)
+    local character = player.Character
+    return character and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0
+end
+
+local function updateFriendList()
+    local localPlayer = Players.LocalPlayer
+    if localPlayer then
+        local friendCache = {}
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer and localPlayer:IsFriendsWith(player.UserId) then
+                friendCache[player.UserId] = true
+            end
+        end
+        return friendCache
+    end
+    return {}
+end
+
+Players.PlayerAdded:Connect(updateFriendList)
+Players.PlayerRemoving:Connect(updateFriendList)
+
+local function isPlayerBehindWall(player)
+    local character = player.Character
+    if character then
+        local hitpart = character:FindFirstChild(SelectedPart)
+        if hitpart then
+            local direction = (hitpart.Position - Cam.CFrame.Position).unit * maxDistance
+            local ray = Ray.new(Cam.CFrame.Position, direction)
+            local hitPart = workspace:FindPartOnRay(ray, Players.LocalPlayer.Character, false, true)
+            return hitPart and not hitPart:IsDescendantOf(character)
+        end
+    end
+    return false
+end
+
+local function getClosestPlayerInFOV()
+    local nearest = nil
+    local shortestDistance = math.huge
+    local playerMousePos = Cam.ViewportSize / 2
+    local friendCache = noFriendTargeting and updateFriendList() or {}
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer and isPlayerAlive(player) then
+            if  noFriendTargeting and friendCache[player.UserId] then
+                continue
+            end
+            
+            local character = player.Character
+            local hitpart = character and character:FindFirstChild(SelectedPart)
+            if hitpart then
+                local screenPosition, isVisible = Cam:WorldToViewportPoint(hitpart.Position)
+                local distanceFromMouse = (Vector2.new(screenPosition.X, screenPosition.Y) - playerMousePos).Magnitude
+                local actualDistance = (Cam.CFrame.Position - hitpart.Position).Magnitude
+
+                if isVisible and distanceFromMouse < fov and actualDistance < maxDistance then
+                    if not wallCheckEnabled or not isPlayerBehindWall(player) then
+                        if distanceFromMouse < shortestDistance then
+                            shortestDistance = distanceFromMouse
+                            nearest = player
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nearest
+end
+
+local function toggleFOV()
+    fovEnabled = not fovEnabled
+    FOVring.Visible = fovEnabled
+    if not fovEnabled then
+       FOVring.Visible = false
+    end
+end
+
+local function toggleWallCheck()
+    wallCheckEnabled = not wallCheckEnabled
+end
+
+RunService.RenderStepped:Connect(function()
+    if fovEnabled then
+        updateDrawings()
+        local closest = getClosestPlayerInFOV()
+        if closest and closest.Character:FindFirstChild(SelectedPart) then
+            local hitpart = closest.Character:FindFirstChild(SelectedPart)
+            lookAt(hitpart.Position)
+        end
+    end
+end)
+
+Tab:CreateToggle({
+    Name = "Fov Aimbot",
+    CurrentValue = false,
+    Flag = "Aimbot Fov",
+    Callback = function(Value)
+        toggleFOV()
+    end,
+})
+
+Tab:CreateToggle({
+    Name = "WallCheck",
+    CurrentValue = false,
+    Flag = "ToggleWallCheck",
+    Callback = function(Value)
+        toggleWallCheck()
+    end,
+})
+
+Tab:CreateToggle({
+    Name = "FriendCheck",
+    CurrentValue = false,
+    Flag = "NoFriendTargeting",
+    Callback = function(toggleState)
+        noFriendTargeting = toggleState
+    end,
+})
+
+Tab:CreateSlider({
+    Name = "Max Distance",
+    Range = {100, 1000},
+    Increment = 10,
+    Suffix = "Studs",
+    CurrentValue = maxDistance,
+    Flag = "MaxDistanceSlider",
+    Callback = function(Value)
+        maxDistance = Value
+    end,
+})
+
+Tab:CreateSlider({
+    Name = "FOV Size",
+    Range = {20, 120},
+    Increment = 5,
+    Suffix = "Degrees",
+    CurrentValue = fov,
+    Flag = "FOVSlider",
+    Callback = function(Value)
+        fov = Value
+        FOVring.Radius = fov
+    end,
+})
+
+Tab:CreateColorPicker({
+    Name = "FOV Color Picker",
+    Color = fovColor,
+    Flag = "ColorPicker1",
+    Callback = function(Value)
+        fovColor = Value
+        FOVring.Color = fovColor
+    end,
+})
+
+Tab:CreateDropdown({
+    Name = "Target Part",
+    Options = {"Head", "HumanoidRootPart"},
+    CurrentOption = {"Head"},
+    MultipleOptions = false,
+    Flag = "partdropdown",
+    Callback = function(Options)
+        SelectedPart = Options[1]
+    end,
+})
+
+
+local Paragraph = Tab:CreateParagraph({Title = "Slient Aim", Content = ""})
+getgenv().SAS = {
+    Enabled = false,
+    VisibleCheck = false,
+    TargetPart = "Head",
+    SilentAimMethod = "Raycast",
+    FOVRadius = 130,
+    FOVColor = Color3.fromRGB(255, 255, 255),
+    ShowSnapLine = false,
+    SnapColor = Color3.fromRGB(255, 255, 255),
+    HitChance = 100,
+    FriendCheck = false,
+    Rainbow = false,
+    Blacklist = {}
+}
+
+local SAS = getgenv().SAS
+local next, pcall = next, pcall
+local Vector2New = Vector2.new
+local Color3FromRGB = Color3.fromRGB
+local RayNew = Ray.new
+local mathFloor, mathRandom = math.floor, math.random
+local tableUnpack = unpack or table.unpack
+
+Camera = workspace.CurrentCamera
+Players = game:GetService("Players")
+RunService = game:GetService("RunService")
+UserInputService = game:GetService("UserInputService")
+LocalPlayer = Players.LocalPlayer
+GetPlayers = Players.GetPlayers
+WorldToScreen = Camera.WorldToScreenPoint
+WorldToViewportPoint = Camera.WorldToViewportPoint
+GetPartsObscuringTarget = Camera.GetPartsObscuringTarget
+FindFirstChild = game.FindFirstChild
+RenderStepped = RunService.RenderStepped
+ValidTargetParts = {"Head", "HumanoidRootPart"}
+
+local fov_circle = Drawing.new("Circle")
+fov_circle.Thickness = 2
+fov_circle.Filled = false
+
+local snaps = Drawing.new("Line")
+snaps.ZIndex = 999
+snaps.Thickness = 1
+
+local EA = { Raycast = { ArgCountRequired = 3, Args = {"Instance", "Vector3", "Vector3", "RaycastParams"} } }
+
+local friendCache = {}
+local blacklistDropdown
+
+local function updateFriendList()
+    local lp = Players.LocalPlayer
+    friendCache = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= lp and lp:IsFriendsWith(player.UserId) then
+            friendCache[player.UserId] = true
+        end
+    end
+end
+
+local function getTargetPart(character)
+    local part = character:FindFirstChild(SAS.TargetPart)
+    if part and part:IsA("BasePart") then
+        return part
+    else
+        return character:FindFirstChild("HumanoidRootPart")
+    end
+end
+
+local function updateBlacklistDropdown()
+    local list = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(list, p.Name) end
+    end
+    if blacklistDropdown then
+        blacklistDropdown:Refresh(list)
+    end
+end
+
+Players.PlayerAdded:Connect(function()
+    updateFriendList()
+    updateBlacklistDropdown()
+end)
+Players.PlayerRemoving:Connect(function()
+    updateFriendList()
+    updateBlacklistDropdown()
+end)
+updateFriendList()
+updateBlacklistDropdown()
+
+function CalculateChance(Percentage)
+    return math.random() <= (Percentage / 100)
+end
+
+function getPositionOnScreen(Vector)
+    local Vec3, OnScreen = WorldToScreen(Camera, Vector)
+    return Vector2.new(Vec3.X, Vec3.Y), OnScreen
+end
+
+function ValidateArguments(Args, RayMethod)
+    if #Args < RayMethod.ArgCountRequired then return false end
+    for Pos, Argument in next, Args do
+        if typeof(Argument) ~= RayMethod.Args[Pos] then return false end
+    end
+    return true
+end
+
+function getDirection(Origin, Position)
+    return (Position - Origin).Unit * 1000
+end
+
+function IsPlayerVisible(Player)
+    local Character = Player.Character
+    local LocalCharacter = LocalPlayer.Character
+    if not (Character and LocalCharacter) then return false end
+    local Root = getTargetPart(Character)
+    if not Root then return false end
+    return #GetPartsObscuringTarget(Camera, {Root.Position}, {LocalCharacter, Character}) == 0
+end
+
+function getClosestPlayer()
+    local Closest, DistanceToMouse = nil, nil
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local FOVRadius = SAS.FOVRadius
+    for _, Player in next, GetPlayers(Players) do
+        if Player == LocalPlayer then continue end
+        if SAS.TeamCheck and Player.Team == LocalPlayer.Team then continue end
+        if SAS.VisibleCheck and not IsPlayerVisible(Player) then continue end
+        if SAS.FriendCheck and friendCache[Player.UserId] then continue end
+        if table.find(SAS.Blacklist, Player.Name) then continue end
+
+        local Character = Player.Character
+        if not Character then continue end
+        local Humanoid = FindFirstChild(Character, "Humanoid")
+        if not Humanoid or Humanoid.Health <= 0 then continue end
+
+        local Part = getTargetPart(Character)
+        if not Part then continue end
+
+        local ScreenPos, OnScreen = getPositionOnScreen(Part.Position)
+        if not OnScreen then continue end
+
+        local Distance = (screenCenter - ScreenPos).Magnitude
+        if Distance <= (DistanceToMouse or FOVRadius) then
+            Closest = Part
+            DistanceToMouse = Distance
+        end
+    end
+    return Closest
+end
+
+local lastUpdate = tick()
+local updateInterval = 0.01
+local SelectedTarget = nil
+
+RunService.RenderStepped:Connect(function()
+    local currentTime = tick()
+    if currentTime - lastUpdate < updateInterval then return end
+    lastUpdate = currentTime
+
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    fov_circle.Position = screenCenter
+    fov_circle.Radius = SAS.FOVRadius
+    fov_circle.Visible = SAS.Enabled
+    snaps.Color = SAS.Rainbow and Color3.fromHSV((tick() % 5) / 5, 1, 1) or SAS.SnapColor
+    fov_circle.Color = SAS.Rainbow and Color3.fromHSV((tick() % 5) / 5, 1, 1) or SAS.FOVColor
+
+    SelectedTarget = SAS.Enabled and getClosestPlayer() or nil
+
+    if SAS.ShowSnapLine and SAS.Enabled and SelectedTarget then
+        local screenPos, onScreen = WorldToViewportPoint(Camera, SelectedTarget.Position)
+        local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        local distance = (center - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+        if onScreen and distance <= SAS.FOVRadius then
+            snaps.From = center
+            snaps.To = Vector2.new(screenPos.X, screenPos.Y)
+            snaps.Visible = true
+        else
+            snaps.Visible = false
+        end
+    else
+        snaps.Visible = false
+    end
+end)
+
+if hookmetamethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+        local Method = getnamecallmethod()
+        local Args = {...}
+        local self = Args[1]
+
+        if SAS.Enabled and self == workspace and not checkcaller() and CalculateChance(SAS.HitChance) then
+            if Method == "Raycast" and SAS.SilentAimMethod == Method and ValidateArguments(Args, EA.Raycast) then
+                local Origin = Args[2]
+                local TargetPart = getClosestPlayer()
+                if TargetPart then
+                    Args[3] = getDirection(Origin, TargetPart.Position)
+                    return oldNamecall(tableUnpack(Args))
+                end
+            end
+        end
+
+        return oldNamecall(...)
+    end))
+end
+
+Tab:CreateToggle({Name = "Silent Aim", CurrentValue = SAS.Enabled, Flag = "SAS.Enabled", Callback = function(v) SAS.Enabled = v end})
+Tab:CreateToggle({Name = "Visible Check", CurrentValue = SAS.VisibleCheck, Flag = "SAS.VisibleCheck", Callback = function(v) SAS.VisibleCheck = v end})
+Tab:CreateToggle({Name = "Friend Check", CurrentValue = SAS.FriendCheck, Flag = "SAS.FriendCheck", Callback = function(v) SAS.FriendCheck = v end})
+Tab:CreateToggle({Name = "Show Snaplines", CurrentValue = SAS.ShowSnapLine, Flag = "SAS.ShowSnapLine", Callback = function(v) SAS.ShowSnapLine = v end})
+Tab:CreateToggle({Name = "Rainbow Color", CurrentValue = SAS.Rainbow, Flag = "SAS.Rainbow", Callback = function(v) SAS.Rainbow = v end})
+Tab:CreateDropdown({Name = "Target Part", Options = ValidTargetParts, CurrentOption = SAS.TargetPart, Flag = "SAS.TargetPart", Callback = function(v) SAS.TargetPart = v end})
+blacklistDropdown = Tab:CreateDropdown({Name = "Blacklist", Options = {}, CurrentOption = {}, Multi = true, Flag = "SAS.Blacklist", Callback = function(v) SAS.Blacklist = v end})
+Tab:CreateSlider({Name = "FOV Radius", Range = {1, 300}, Increment = 1, CurrentValue = SAS.FOVRadius, Flag = "SAS.FOVRadius", Callback = function(v) SAS.FOVRadius = v end})
+Tab:CreateSlider({Name = "Hit Chance", Range = {1, 100}, Increment = 1, CurrentValue = SAS.HitChance, Flag = "SAS.HitChance", Callback = function(v) SAS.HitChance = v end})
+Tab:CreateColorPicker({Name = "FOV Color", Color = SAS.FOVColor, Flag = "SAS.FOVColor", Callback = function(v) SAS.FOVColor = v end})
+Tab:CreateColorPicker({Name = "Snapline Color", Color = SAS.SnapColor, Flag = "SAS.SnapColor", Callback = function(v) SAS.SnapColor = v end})
+
+  
+
+local Paragraph = Tab:CreateParagraph({Title = "Hitbox Head", Content = ""})
+local hitboxer = false 
+local hitboxSize = Vector3.new(25, 25, 25) 
+local hitboxTransparency = 0.5 
+local hitboxColor = Color3.fromRGB(255, 255, 255) 
+local Origins = {}
+
+Tab:CreateToggle({ 
+    Name = "Hitbox Expander", 
+    CurrentValue = false, 
+    Flag = "HitboxToggle", 
+    Callback = function(Value) 
+        hitboxer = Value 
+        if not hitboxer then 
+            for _, player in pairs(game.Players:GetPlayers()) do 
+                if player.Character and player.Character:FindFirstChild("Head") and player ~= game.Players.LocalPlayer then 
+                    local head = player.Character.Head 
+                    local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart") 
+                    if Origins[player] then 
+                        head.Size = Origins[player].Head.Size 
+                        humanoidRootPart.Size = Origins[player].HumanoidRootPart.Size 
+                        head.Transparency = Origins[player].Head.Transparency 
+                        head.BrickColor = Origins[player].Head.BrickColor 
+                        head.CanCollide = Origins[player].Head.CanCollide 
+                        head.Material = Origins[player].Head.Material 
+                        humanoidRootPart.CanCollide = Origins[player].HumanoidRootPart.CanCollide 
+                        Origins[player] = nil 
+                    end 
+                end 
+            end 
+        end 
+    end, 
+})
+
+Tab:CreateColorPicker({ 
+    Name = "Hitbox Color", 
+    Color = hitboxColor, 
+    Flag = "HitboxColor", 
+    Callback = function(Value) 
+        hitboxColor = Value 
+    end, 
+})
+
+Tab:CreateSlider({ 
+    Name = "Hitbox Size", 
+    Range = {10, 50}, 
+    Increment = 5, 
+    Suffix = "Size", 
+    CurrentValue = 25, 
+    Flag = "HitboxSize", 
+    Callback = function(Value) 
+        hitboxSize = Vector3.new(Value, Value, Value) 
+    end, 
+})
+
+game:GetService("RunService").Heartbeat:Connect(function() 
+    if hitboxer then 
+        for _, player in pairs(game.Players:GetPlayers()) do 
+            if player.Character and player.Character:FindFirstChild("Head") and player ~= game.Players.LocalPlayer then 
+                local head = player.Character.Head 
+                local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart") 
+                if not Origins[player] then 
+                    Origins[player] = { 
+                        Head = { 
+                            Size = head.Size, 
+                            Transparency = head.Transparency, 
+                            BrickColor = head.BrickColor, 
+                            CanCollide = head.CanCollide, 
+                            Material = head.Material 
+                        }, 
+                        HumanoidRootPart = { 
+                            Size = humanoidRootPart.Size, 
+                            CanCollide = humanoidRootPart.CanCollide 
+                        } 
+                    } 
+                end 
+                head.Size = hitboxSize 
+                humanoidRootPart.Size = hitboxSize 
+                head.Transparency = hitboxTransparency 
+                head.BrickColor = BrickColor.new(hitboxColor) 
+                head.CanCollide = false 
+                head.Material = Enum.Material.SmoothPlastic 
+                humanoidRootPart.CanCollide = false 
+            end 
+        end 
+    end 
+end)
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+local Tab = Window:CreateTab("ESP", nil)
+
+
+
+getgenv().espak = false  
+getgenv().espColor = Color3.fromRGB(255, 0, 0) 
+getgenv().espSizeMultiplier = 1 
+getgenv().espchacheboxx = {}
+getgenv().healthak = true
+
+Tab:CreateToggle({
+    Name = "ESP BOX",
+    CurrentValue = false,
+    Flag = "ESP Toggle",
+    Callback = function(Value)
+        espak = Value
+        if type(espchacheboxx) == "table" then
+            for _, esp in pairs(espchacheboxx) do
+                if esp.box then esp.box.Visible = espak end
+                if esp.boxoutline then esp.boxoutline.Visible = espak end
+                if esp.healthbar then esp.healthbar.Visible = espak and healthak end
+                if esp.healthbaroutline then esp.healthbaroutline.Visible = espak and healthak end
+            end
+        end
+    end,
+})
+
+Tab:CreateToggle({
+    Name = "Healthbar",
+    CurrentValue = true,
+    Flag = "HealthBAR",
+    Callback = function(Value)
+        healthak = Value
+        if type(espchacheboxx) == "table" then
+            for _, esp in pairs(espchacheboxx) do
+                if esp.healthbar then esp.healthbar.Visible = espak and healthak end
+                if esp.healthbaroutline then esp.healthbaroutline.Visible = espak and healthak end
+            end
+        end
+    end,
+})
+
+Tab:CreateColorPicker({
+    Name = "ESPBOX COLOR",
+    Color = espColor,
+    Flag = "ESP Color",
+    Callback = function(Value)
+        espColor = Value
+        for _, esp in pairs(espchacheboxx) do
+            if esp and esp.box then
+                esp.box.Color = espColor
+            end
+        end
+    end,
+})
+
+Tab:CreateSlider({
+    Name = "ESP BOX SIZE",
+    Range = {0.5, 2},
+    Increment = 0.1,
+    CurrentValue = 1,
+    Flag = "ESP Size",
+    Callback = function(Value)
+        espSizeMultiplier = Value
+    end,
+})
+
+local runService = game:GetService("RunService")
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
+local tan, rad = math.tan, math.rad
+local wtvp = function(...) 
+    local a, b = camera:WorldToViewportPoint(...) 
+    return newVector2(a.X, a.Y), b, a.Z 
+end
+
+local function createEspBoxx(player)
+    local drawings = {}
+    drawings.box = newDrawing("Square")
+    drawings.box.Thickness = 1
+    drawings.box.Filled = false
+    drawings.box.Color = espColor
+    drawings.box.Visible = espak
+    drawings.box.ZIndex = 2
+    
+    drawings.boxoutline = newDrawing("Square")
+    drawings.boxoutline.Thickness = 3
+    drawings.boxoutline.Filled = false
+    drawings.boxoutline.Color = newColor3()
+    drawings.boxoutline.Visible = espak
+    drawings.boxoutline.ZIndex = 1
+    
+    drawings.healthbar = newDrawing("Line")
+    drawings.healthbar.Thickness = 2
+    drawings.healthbar.Color = Color3.fromRGB(0, 255, 0)
+    drawings.healthbar.Visible = espak and healthak
+    drawings.healthbar.ZIndex = 2
+    
+    drawings.healthbaroutline = newDrawing("Line")
+    drawings.healthbaroutline.Thickness = 4
+    drawings.healthbaroutline.Color = newColor3(0, 0, 0)
+    drawings.healthbaroutline.Visible = espak and healthak
+    drawings.healthbaroutline.ZIndex = 1
+    
+    espchacheboxx[player] = drawings
+end
+
+local function removeEspBoxx(player)
+    if rawget(espchacheboxx, player) then
+        for _, drawing in pairs(espchacheboxx[player]) do
+            if drawing then
+                drawing:Remove()
+            end
+        end
+        espchacheboxx[player] = nil
+    end
+end
+
+local function updateEspBoxx(player, esp)
+    local character = player and player.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    if character and humanoid and humanoid.Health > 0 then
+        local cframe = character:GetModelCFrame()
+        local position, visible, depth = wtvp(cframe.Position)
+        if esp.box then esp.box.Visible = visible and espak end
+        if esp.boxoutline then esp.boxoutline.Visible = visible and espak end
+        if esp.healthbar then esp.healthbar.Visible = visible and espak and healthak end
+        if esp.healthbaroutline then esp.healthbaroutline.Visible = visible and espak and healthak end
+        if cframe and visible and esp.box and esp.boxoutline then
+            local scaleFactor = espSizeMultiplier / (depth * tan(rad(camera.FieldOfView / 2)) * 2) * 1000
+            local width, height = 4 * scaleFactor, 5 * scaleFactor
+            local x, y = math.round(position.X - width / 2), math.round(position.Y - height / 2)
+            esp.box.Size = newVector2(width, height)
+            esp.box.Position = newVector2(x, y)
+            esp.box.Color = espColor
+            esp.boxoutline.Size = esp.box.Size
+            esp.boxoutline.Position = esp.box.Position
+            if esp.healthbar and esp.healthbaroutline then
+                local healthPercent = humanoid.Health / humanoid.MaxHealth
+                local healthHeight = height * healthPercent
+                esp.healthbar.From = newVector2(esp.box.Position.X - 6, esp.box.Position.Y + height)
+                esp.healthbar.To = newVector2(esp.box.Position.X - 6, esp.box.Position.Y + height - healthHeight)
+                esp.healthbar.Color = newColor3(1 - healthPercent, healthPercent, 0)
+                esp.healthbaroutline.From = esp.healthbar.From
+                esp.healthbaroutline.To = newVector2(esp.healthbar.From.X, esp.box.Position.Y)
+            end
+        end
+    else
+        if esp.box then esp.box.Visible = false end
+        if esp.boxoutline then esp.boxoutline.Visible = false end
+        if esp.healthbar then esp.healthbar.Visible = false end
+        if esp.healthbaroutline then esp.healthbaroutline.Visible = false end
+    end
+end
+
+for _, player in ipairs(players:GetPlayers()) do
+    if player ~= localPlayer then
+        createEspBoxx(player)
+    end
+end
+
+players.PlayerAdded:Connect(createEspBoxx)
+players.PlayerRemoving:Connect(removeEspBoxx)
+
+runService:BindToRenderStep("esp", Enum.RenderPriority.Camera.Value, function()
+    if type(espchacheboxx) == "table" then  
+        for player, esp in pairs(espchacheboxx) do
+            if player ~= localPlayer then
+                updateEspBoxx(player, esp)
+            end
+        end
+    end
+end)
+ 
+  
+getgenv().espSettings = {
+    showName = false,
+    showDistance = false,
+    showInventory = false,
+    showHolding = false,
+    rainbowEnabled = false,
+    inventoryPosition = "Below",
+    holdingPosition = "Below",
+    espColor = Color3.fromRGB(255, 0, 0),
+    espTextSize = 15,
+    inventoryLimit = 5,
+    selectedCategories = {}
+}
+
+getgenv().espCache = {}
+
+local runService = game:GetService("RunService")
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local descriptionTable = {
+    ["misc"] = {
+        ["Golden tomato seeds"] = "GoldenTomatoSeeds",
+        ["Grow your plants in upmost luxury"] = "DiamondPot",
+        ["Used to water plants to keep their quality up"] = "WateringCan2",
+        ["Used to hack ATMs"] = "HackToolQuantum",
+        ["A small tool used to manipulate a lock's pins and open it without a key."] = "Lockpick",
+        ["You can place this by your crib to grow plants"] = "RegularPot",
+        ["Basic tomato seeds"] = "TomatoSeeds",
+ ["A sleek silver steak—perfect for feasting or fighting"] = "SilverSteak",
+        ["A classic steak thatâ€™s good enough to eat and swing in a pinch"] = "Steak",
+        ["Skip 10 minutes off the growing process"] = "RegularFertilizer",
+        ["A six-sided gaming cube to roll random numbers."] = "Dice",
+        ["Grow your plants in luxury"] = "GoldenPot",
+        ["Better water retention and money rewards"] = "PremiumSoil",
+        ["Basic corn seeds"] = "CornSeeds",
+        ["Basic sunflower seeds"] = "SunflowerSeeds",
+        ["Better than your usual fertilizer"] = "OrganicFertilizer",
+        ["A meaty treat that's as tough as it is tasty"] = "BronzeSteak",
+        ["A mysterious tool from a box that packs a surprising punch"] = "BoxToolSunflowerSeed",
+        ["A posh steak that gleams with both culinary and combative charm"] = "DiamondSteak",
+        ["Shiny and delicate professional cooking skillet, used in the Cooking job"] = "SilverSkillet",
+        ["Keep plants fresh to maintain their money quality"] = "WateringCan",
+        ["Used for farming to plant stuff on"] = "RegularSoil",
+    },
+    ["melee"] = {
+        ["A sparkling mop that proves even cleaning can be cutting-edge"] = "Diamond Mop",
+["A sharp knife from the butcher’s block—slicing through the fray"] = "Butcher Knife",
+        ["A timeworn shovel that still digs in for a proper scrap"] = "Rusty Shovel",
+        ["Banned from the ballpark, but perfect for the backstreets"] = "Metal Baseball Bat",
+        ["A luxurious mop that sweeps away foes with golden flair"] = "Gold Mop",
+        ["Good destructive power"] = "Crowbar",
+        ["A sturdy mop that swishes through chaos with a bit of class"] = "Bronze Mop",
+        ["High knockback. Bonk"] = "Frying Pan",
+        ["A repurposed chair leg showing that even furniture can fight"] = "Chair Leg",
+["A shovel with a tactical twist—dig in and defend"] = "Tactical Shovel",
+        ["A trusty axe for chopping both wood and adversaries"] = "Axe",
+        ["A precision axe designed for surgical strikes in battle"] = "Tactical Axe",
+        ["A tire iron thatâ€™s perfect for both a quick fix and a rough hit"] = "Tire Iron",
+        ["Although useless, it can be used as a weapon"] = "Wooden Board",
+        ["A knife engineered for stealth and quick, lethal moves"] = "Tactical Knife",
+        ["A pool cue that lines up a shot on the table or in combat"] = "Pool Cue",
+        ["A no-frills mop that doubles as an unexpected weapon"] = "Mop",
+        ["You can call it Lucy, or Lillian"] = "Barbed Baseball Bat",
+        ["The nails really add to it"] = "Nailed Wooden Board",
+        ["High damage and destructive power"] = "Wrench",
+        ["A makeshift shank for those up-close and personal moments"] = "Shank",
+        ["You can also dig 'em a grave once you're done with 'em"] = "Shovel",
+        ["A small, slick blade that flips open in a flash"] = "Switchblade",
+        ["Very high destructive power, can flatten out a car in mere seconds"] = "Sledge Hammer",
+        ["A heavy hammer that delivers a smashing blow every time"] = "Hammer",
+        ["Can cause serious lacerations"] = "Machette",
+        ["It's RAW! get out. OUT!"] = "Rolling Pin",
+        ["Good and reliable, although it feels like it's missing something"] = "Baseball Bat",
+        ["From a random broken pipe, makes a good weeapon"] = "Metal Pipe",
+       ["A gleaming mop that cleans up messes—and enemies—efficiently"] = "Silver Mop",
+        ["A rugged axe built for the rough and tumble of combat"] = "Combat Axe",
+        ["Stun your enemies and make them drop on the ground"] = "Taser",
+["Not just for bikes—a lock that can deliver a solid clout"] = "Bike Lock",
+    },
+    ["throwable"] = {
+        ["Delivers a pop when thrown"] = "Soda Can",
+        ["A dumbbell plate that shows even gym gear can be an effective projectile"] = "Dumbbell Plate",
+        ["Leaves a flaming area at the position of impact"] = "Molotov",
+        ["Good for drinking, but also smashing fun to throw"] = "Glass",
+        ["A jar that shatters spectacularly when thrown, creating chaos"] = "Jar",
+        ["A drink mug that makes a cracking throwable in a pinch"] = "Mug",
+        ["A hefty cinder block that's ideal for a thrown, crushing blow"] = "Cinder Block",
+        ["A bottle you can fling, splashing a chaotic burst on impact"] = "Bottle",
+        ["Feels empty"] = "Spray Can",
+        ["Channel your inner caveman"] = "Rock",
+        ["Explodes into flames when it comes in contact with fire, explosions or bullets"] = "Jerry Can",
+        ["A bowling pin that makes for a surprisingly effective projectile"] = "Bowling Pin",
+        ["Best thrown rather than sipped, causes a messy surprise"] = "Milkshake",
+        ["A brick to be hurled, delivering blunt force with each throw"] = "Brick",
+        ["Explodes after a short time into a volley of colors"] = "Fire Cracker",
+        ["Military-grade frag grenade, explodes after a short duration"] = "Grenade",
+    },
+    ["consumable"] = {
+        ["Restores a high amount of health and gives a health regeneration boost"] = "First Aid Kit",
+        ["Good before a workout. Gives a long-lasting endurance boost"] = "Pre Workout",
+        ["Energy drink that restores stamina and gives an endurance boost"] = "Bull Energy",
+        ["Very high speed and endurance boost"] = "Energy Shot",
+        ["Treats small wounds and cuts"] = "Bandage",
+        ["Average gas station energy bar"] = "Energy Bar Max",
+        ["Energy drink that restores stamina and gives a speed boost"] = "Monster X",
+        ["Probably your blood type, should keep you alive"] = "Blood Bag",
+        ["Restores a good amount of health and gives a health regeneration boost"] = "Emergency Care Kit",
+        ["Reduces damage you take from all sources for a short duration"] = "Pain Relief",
+    },
+    ["gun"] = {
+        ["Deers are not in season this time around"] = "Hunting Rifle",
+        ["Shoots fireworks as ammo"] = "Firework Launcher",
+        ["Takes care of vehicles in an instant"] = "RPG",
+        ["High-grade shotgun used by SWAT teams"] = "Remington",
+        ["Medium-grade pistol, used by both civilians and authorities"] = "P226",
+        ["Sawing the barrel off only makes it deadlier, increasing its knockback power"] = "Sawnoff",
+        ["Hard to handle, and not great firing power"] = "G3",
+        ["SWAT and Heist teams' favorite gun"] = "MP5",
+        ["Well-known assault rifle, used by most \"bad people\" organizations"] = "AK47",
+        ["High-precision weapon, use your enemies as target practice"] = "Crossbow",
+        ["It's high noon"] = "Anaconda",
+        ["Handgun most preferred by cops"] = "Glock",
+        ["High-precision bolt-action rifle, old and reliable"] = "M24",
+        ["Bad accuracy and damage, but wow is it fast"] = "Uzi",
+        ["Low-grade pistol, purely for self-defense, yep"] = "C9",
+        ["Off my lawn!"] = "Double Barrel",
+        ["Shorter and faster AK variant"] = "Draco",
+    }
+}
+
+local allCategories = {"misc", "melee", "throwable", "consumable", "gun"}
+
+local newDrawing = Drawing.new
+local function wtvp(...)
+    local a, b = camera:WorldToViewportPoint(...)
+    return Vector2.new(a.X, a.Y), b, a.Z
+end
+
+
+
+function getCurrentColor()
+    if espSettings.rainbowEnabled then
+        local t = tick()
+        local r = math.sin(t) * 127 + 128
+        local g = math.sin(t + 2) * 127 + 128
+        local b = math.sin(t + 4) * 127 + 128
+        return Color3.fromRGB(r, g, b)
+    else
+        return espSettings.espColor
+    end
+end
+
+function getItemNameFromDescription(description)
+    if not description then return "[unknown]" end
+    
+    for category, items in pairs(descriptionTable) do
+        if items[description] then
+            return items[description]
+        end
+    end
+    
+    return "[unknown]"
+end
+
+function tryFixYellowError(err)
+    if err then
+        return pcall(function() return err end) and err or nil
+    end
+    return nil
+end
+
+function shouldShowItem(tool)
+    if #espSettings.selectedCategories == 0 then return true end
+    
+    local description
+    local success, result = pcall(function() 
+        return tool:GetAttribute("Description") 
+    end)
+    
+    if success then
+        description = result
+    else
+        return false
+    end
+    
+    if not description then return false end
+    
+    for category, items in pairs(descriptionTable) do
+        if items[description] and table.find(espSettings.selectedCategories, category) then
+            return true
+        end
+    end
+    
+    return false
+end
+
+function createEsp(player)
+    local drawings = {
+        name = newDrawing("Text"),
+        distance = newDrawing("Text"),
+        inventory = newDrawing("Text"),
+        holding = newDrawing("Text")
+    }
+    for _, drawing in pairs(drawings) do
+        drawing.Size = espSettings.espTextSize
+        drawing.Center = true
+        drawing.Visible = false
+    end
+    espCache[player] = drawings
+end
+
+function updateEsp(player, esp)
+    local character = player and player.Character
+    if not character then return end
+    
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    if humanoid and humanoid.Health > 0 then
+        local cframe
+        local success, result = pcall(function() return character:GetModelCFrame() end)
+        if success then
+            cframe = result
+        else
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if not rootPart then return end
+            cframe = rootPart.CFrame
+        end
+        
+        
+        if backpack then
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if shouldShowItem(tool) then
+                    local description = tool:GetAttribute("Description")
+                    local itemName = getItemNameFromDescription(description)
+                    table.insert(inventoryItems, itemName)
+                    hasValidItems = true
+                    if #inventoryItems >= espSettings.inventoryLimit then break end
+                end
+            end
+        end
+
+        local color = getCurrentColor()
+
+        esp.name.Size = espSettings.espTextSize
+        esp.distance.Size = espSettings.espTextSize
+        esp.inventory.Size = espSettings.espTextSize
+        esp.holding.Size = espSettings.espTextSize
+
+        if espSettings.showHolding and visible and heldItem then
+            local description = heldItem:GetAttribute("Description")
+            local itemName = getItemNameFromDescription(description)
+            esp.holding.Text = "Holding: " .. itemName
+            esp.holding.Color = color
+            esp.holding.Position = Vector2.new(position.X, position.Y + (espSettings.holdingPosition == "Above" and -100 or 110))
+            esp.holding.Visible = true
+        else
+            esp.holding.Visible = false
+        end
+
+        if espSettings.showInventory and visible then
+            if hasValidItems then
+                esp.inventory.Text = "Inventory: " .. table.concat(inventoryItems, ", ")
+                esp.inventory.Color = color
+                esp.inventory.Position = Vector2.new(position.X, position.Y + (espSettings.inventoryPosition == "Above" and -70 or 110))
+                esp.inventory.Visible = true
+            else
+                esp.inventory.Visible = false
+            end
+        else
+            esp.inventory.Visible = false
+        end
+
+        if espSettings.showName and visible then
+            esp.name.Text = player.Name
+            esp.name.Color = color
+            esp.name.Position = Vector2.new(position.X, position.Y - 30)
+            esp.name.Visible = true
+        else
+            esp.name.Visible = false
+        end
+
+        if espSettings.showDistance and visible then
+            local distance = 0
+            local success, result = pcall(function()
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    return (localPlayer.Character.HumanoidRootPart.Position - cframe.Position).Magnitude
+                else
+                    return 0
+                end
+            end)
+            
+            if success then
+                distance = result
+            end
+            
+            esp.distance.Text = string.format("Distance: %.1f", distance)
+            esp.distance.Color = color
+            esp.distance.Position = Vector2.new(position.X, position.Y + 50)
+            esp.distance.Visible = true
+        else
+            esp.distance.Visible = false
+        end
+    else
+        for _, element in pairs(esp) do
+            element.Visible = false
+        end
+    end
+end
+
+local function safeConnect(signal, callback)
+    local success, connection = pcall(function()
+        return signal:Connect(callback)
+    end)
+    
+    if not success then
+        task.spawn(function()
+            while true do
+                pcall(function()
+                    signal:Connect(callback)
+                    return true
+                end)
+                if success then break end
+                task.wait(1)
+            end
+        end)
+    end
+    
+    return connection
+end
+
+safeConnect(players.PlayerAdded, createEsp)
+safeConnect(players.PlayerRemoving, function(player)
+    if espCache[player] then
+        for _, drawing in pairs(espCache[player]) do
+            pcall(function() drawing:Remove() end)
+        end
+        espCache[player] = nil
+    end
+end)
+
+for _, player in ipairs(players:GetPlayers()) do
+    if player ~= localPlayer then
+        createEsp(player)
+    end
+end
+
+local function safeBindToRenderStep()
+    local success = pcall(function()
+        runService:BindToRenderStep("esp", Enum.RenderPriority.Camera.Value, function()
+            for player, esp in pairs(espCache) do
+                if player ~= localPlayer then
+                    pcall(function() updateEsp(player, esp) end)
+                end
+            end
+        end)
+    end)
+    
+    if not success then
+        task.spawn(function()
+            while true do
+                pcall(function()
+                    runService:UnbindFromRenderStep("esp")
+                    task.wait(0.1)
+                    runService:BindToRenderStep("esp", Enum.RenderPriority.Camera.Value, function()
+                        for player, esp in pairs(espCache) do
+                            if player ~= localPlayer then
+                                pcall(function() updateEsp(player, esp) end)
+                            end
+                        end
+                    end)
+                    return true
+                end)
+                if success then break end
+                task.wait(1)
+            end
+        end)
+    end
+end
+
+safeBindToRenderStep()
+
+Tab:CreateToggle({Name = "Show Names", CurrentValue = espSettings.showName, Flag = "Name", Callback = function(Value) espSettings.showName = Value end})
+Tab:CreateToggle({Name = "Show Distance", CurrentValue = espSettings.showDistance, Flag = "show distance", Callback = function(Value) espSettings.showDistance = Value end})
+Tab:CreateToggle({Name = "Show Inventory", CurrentValue = espSettings.showInventory, Flag = "Inventoryesp", Callback = function(Value) espSettings.showInventory = Value end})
+Tab:CreateToggle({Name = "Show Holding Tool", CurrentValue = espSettings.showHolding, Flag = "holdtool", Callback = function(Value) espSettings.showHolding = Value end})
+Tab:CreateToggle({Name = "Rainbow ESP", CurrentValue = espSettings.rainbowEnabled, Flag = "rainbow", Callback = function(Value) espSettings.rainbowEnabled = Value end})
+
+Tab:CreateDropdown({
+    Name = "Item Categories",
+    Options = {"misc", "melee", "throwable", "consumable", "gun"},
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "itemcategories", 
+    Callback = function(Options)
+        espSettings.selectedCategories = Options
+    end
+})
+
+Tab:CreateDropdown({Name = "Inventory ESP Position", Options = {"Above", "Below"}, CurrentOption = {espSettings.inventoryPosition}, Flag = "ivnp", Callback = function(Options) espSettings.inventoryPosition = Options[1] end})
+Tab:CreateDropdown({Name = "Holding ESP Position", Options = {"Above", "Below"}, CurrentOption = {espSettings.holdingPosition}, Flag = "hp", Callback = function(Options) espSettings.holdingPosition = Options[1] end})
+Tab:CreateDropdown({Name = "Inventory Limit", Options = {"5", "10", "15", "20"}, CurrentOption = {tostring(espSettings.inventoryLimit)}, Flag = "invlimit", Callback = function(Options) espSettings.inventoryLimit = tonumber(Options[1]) end})
+
+Tab:CreateSlider({
+    Name = "Text Size",
+    Range = {10, 30},
+    Increment = 1,
+    Suffix = "Size",
+    CurrentValue = espSettings.espTextSize,
+    Flag = "s",
+    Callback = function(Value)
+        espSettings.espTextSize = Value
+    end
+})
+
+Tab:CreateColorPicker({Name = "ESP Color Picker", Color = espSettings.espColor, Flag = "clo", Callback = function(Value) espSettings.espColor = Value end})
+
+
+
+ 
+
+
+getgenv().ESPTABLESTOOLSESP = getgenv().ESPTABLESTOOLSESP or {}
+getgenv().FolderESPTOOL = {
+    game:GetService("ReplicatedStorage").Items.consumable,
+    game:GetService("ReplicatedStorage").Items.misc,
+    game:GetService("ReplicatedStorage").Items.melee,
+    game:GetService("ReplicatedStorage").Items.gun
+}
+
+getgenv().RARETIYTOOLESP = {
+    Legendary = Color3.fromRGB(255, 215, 0),
+    Rare = Color3.fromRGB(0, 0, 255),
+    Omega = Color3.fromRGB(255, 0, 0),
+    Uncommon = Color3.fromRGB(128, 128, 128),
+    Common = Color3.fromRGB(0, 255, 0),
+    Epic = Color3.fromRGB(128, 0, 128)
+}
+
+getgenv().ToggleESPTOOL = false
+getgenv().ToggleRARETOOL = false
+
+getgenv().findRarityToolESP = function(toolName)
+    for _, folder in ipairs(getgenv().FolderESPTOOL) do
+        local item = folder:FindFirstChild(toolName)
+        if item and item:IsA("Tool") then
+            local rarity = item:GetAttribute("RarityName")
+            return rarity or "Not found"
+        end
+    end
+    return "Not found"
+end
+
+getgenv().getColorToolESP = function(rarity)
+    return getgenv().RARETIYTOOLESP[rarity] or Color3.fromRGB(0, 0, 0)
+end
+
+getgenv().CREATEESPTOOLESP = function(model)
+    if getgenv().ESPTABLESTOOLSESP[model] then return end
+    local rarity = getgenv().findRarityToolESP(model.Name)
+    local text = model.Name .. " [" .. rarity .. "]"
+    local color = getgenv().getColorToolESP(rarity)
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Adornee = model
+    billboard.Size = UDim2.new(0, 100, 0, 25)
+    billboard.AlwaysOnTop = true
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color
+    label.TextStrokeTransparency = 0
+    label.Font = Enum.Font.GothamBold
+    label.TextScaled = true
+    label.Text = text
+    label.Parent = billboard
+
+    billboard.Parent = model
+    getgenv().ESPTABLESTOOLSESP[model] = billboard
+end
+
+getgenv().scanItemsToolESP = function()
+    for _, model in ipairs(workspace.DroppedItems:GetChildren()) do
+        if model:IsA("Model") then
+            getgenv().CREATEESPTOOLESP(model)
+        end
+    end
+end
+
+workspace.DroppedItems.ChildAdded:Connect(function(model)
+    if getgenv().ToggleESPTOOL and model:IsA("Model") then
+        getgenv().CREATEESPTOOLESP(model)
+    end
+end)
+
+Tab:CreateToggle({
+    Name = "Dropped Items Esp",
+    CurrentValue = false,
+    Flag = "ItemEsp",
+    Callback = function(Value)
+        getgenv().ToggleESPTOOL = Value
+        if Value then
+            getgenv().scanItemsToolESP()
+        else
+            for model, esp in pairs(getgenv().ESPTABLESTOOLSESP) do
+                if esp then
+                    esp:Destroy()
+                end
+            end
+            getgenv().ESPTABLESTOOLSESP = {}
+        end
+    end,
+})
+ 
+ 
+    
+
+local ESP_Color = Color3.fromRGB(0, 255, 0) 
+local ESP_Transparency = 0.6 
+local ESP_FontSize = 10
+local Players = game:GetService("Players") 
+local RunService = game:GetService("RunService") 
+local Workspace = game:GetService("Workspace") 
+local LocalPlayer = Players.LocalPlayer 
+local espEnabled = false
+
+local function addESP(atm) 
+    local part = atm:FindFirstChild("Part") 
+    if not part then return end
+    local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+    if not prompt then return end
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Size = UDim2.new(0, 150, 0, 40)
+    billboardGui.Adornee = atm
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Parent = atm
+    billboardGui.StudsOffset = Vector3.new(0, part.Size.Y / 2 + 0.5, 0)
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "ATM"
+    textLabel.TextColor3 = prompt.Enabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    textLabel.TextScaled = false
+    textLabel.TextSize = ESP_FontSize
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Parent = billboardGui
+    prompt:GetPropertyChangedSignal("Enabled"):Connect(function()
+        local isEnabled = prompt.Enabled
+        textLabel.TextColor3 = isEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    end)
+    atm:SetAttribute("ESP", true)
+end
+
+local function toggleATMESP(state) 
+    espEnabled = state 
+    if espEnabled then 
+        for _, atm in pairs(Workspace.Map.Props:GetChildren()) do 
+            addESP(atm) 
+        end 
+    else 
+        for _, atm in pairs(Workspace.Map.Props:GetChildren()) do 
+            if atm:GetAttribute("ESP") then 
+                for _, child in pairs(atm:GetChildren()) do 
+                    if child:IsA("BillboardGui") then 
+                        child:Destroy() 
+                    end 
+                end 
+                atm:SetAttribute("ESP", nil) 
+            end 
+        end 
+    end 
+end
+
+Tab:CreateToggle({ 
+    Name = "ATM ESP", 
+    CurrentValue = false, 
+    Flag = "ATMESP", 
+    Callback = function(Value) 
+        toggleATMESP(Value) 
+    end, 
+})
+
+
+local Tab = Window:CreateTab("AutoFarm", nil)
+
+
+
+local function notify(title, content, state)
+    Rayfield:Notify({
+        Title = title,
+        Content = content,
+        Duration = 2.5,
+        Image = state and "check" or "x"
+    })
+end
+
+local function getLevel()
+    local gui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not gui then return 0 end
+    local skillsGui = gui:FindFirstChild("Skills")
+    if not skillsGui then return 0 end
+    local holder = skillsGui:FindFirstChild("SkillsHolder")
+    if not holder then return 0 end
+    local scroll = holder:FindFirstChild("SkillsScrollingFrame")
+    if not scroll then return 0 end
+    for _, item in pairs(scroll:GetChildren()) do
+        if item:FindFirstChild("SkillTitle") and item.SkillTitle:IsA("TextLabel") then
+            local text = item.SkillTitle.Text
+            if string.find(text, "Janitor") then
+                return tonumber(string.match(text, "%d+")) or 0
+            end
+        end
+    end
+    return 0
+end
+
+local function findValidMops(character, backpack)
+    local found = {}
+    for _, tool in ipairs(character:GetChildren()) do
+        if tool:IsA("Tool") and validMops[string.lower(tool.Name)] then
+            table.insert(found, tool)
+        end
+    end
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and validMops[string.lower(tool.Name)] then
+            table.insert(found, tool)
+        end
+    end
+    return found
+end
+
+local function getAllowedTypes(level)
+    local types = {}
+    if level >= 0 then table.insert(types, "SmallPuddle") end
+    if level >= 5 then table.insert(types, "LargePuddle") end
+    if level >= 20 then table.insert(types, "NastyPuddle") end
+    if level >= 35 then table.insert(types, "OilPuddle") end
+    if level >= 50 then table.insert(types, "ToxicPuddle") end
+    return types
+end
+
+Tab:CreateToggle({
+    Name = "Mop | Clean AutoFarm",
+    CurrentValue = false,
+    Flag = "AutofarmT",
+    Callback = function(Value)
+        active = Value
+        if Value then
+            startFarming()
+        else
+            notifiedMissingTool = false
+            notifiedMultipleMops = false
+        end
+    end,
+})
+
+Tab:CreateDropdown({
+    Name = "Walk Mode",
+    Options = {"Character Walk", "Tween Teleport"},
+    CurrentOption = {"Character Walk"},
+    MultipleOptions = false,
+    Flag = "FarmMode",
+    Callback = function(Options)
+        mode = Options[1]
+    end,
+})
+
+Tab:CreateSlider({
+    Name = "Tween Speed",
+    Range = {1, 10},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = 5,
+    Flag = "TweenSpeed",
+    Callback = function(Value)
+        tweenSpeed = Value
+    end,
+})
+
+local function walkToTarget(part)
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local root = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or not root or not part then return end
+    local lastPos = root.Position
+    local stuckCounter = 0
+    while (part.Position - root.Position).Magnitude > 5 and active do
+        humanoid:MoveTo(part.Position)
+        local reached = humanoid.MoveToFinished:Wait(1.5)
+        local moved = (root.Position - lastPos).Magnitude > 0.5
+        lastPos = root.Position
+        if not moved then
+            stuckCounter += 1
+        else
+            stuckCounter = 0
+        end
+        if stuckCounter >= 3 then
+            break
+        end
+    end
+end
+
+local function tweenTo(pos)
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local root = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+    if not root or not humanoid or humanoid.Health <= 0 then return end
+    local stepDist = 2.5 + (math.random() * 0.3 - 0.15)
+    local target = Vector3.new(pos.X, root.Position.Y, pos.Z)
+    local dist = (target - root.Position).Magnitude
+    while dist > stepDist and active do
+        if humanoid.Health <= 0 then return end
+        local from = root.Position
+        local dir = (target - from).Unit
+        local nextPos = from + dir * stepDist
+        root.CFrame = CFrame.new(Vector3.new(nextPos.X, root.Position.Y, nextPos.Z), nextPos + dir)
+        task.wait(0.1 + math.random() * 0.02)
+        dist = (target - root.Position).Magnitude
+    end
+    if dist <= stepDist then
+        root.CFrame = CFrame.new(target, target + Vector3.new(0, 0, -1))
+    end
+    if humanoid.Sit then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end
+
+function startFarming()
+    if isFarming then return end
+    isFarming = true
+    task.spawn(function()
+        while active do
+            task.wait(0.1)
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local backpack = LocalPlayer:WaitForChild("Backpack")
+            local tools = findValidMops(character, backpack)
+            local toolCount = #tools
+            local inHand = character:FindFirstChildWhichIsA("Tool")
+            local inHandValid = inHand and validMops[string.lower(inHand.Name)]
+            if toolCount == 0 and not inHandValid then
+                if not notifiedMissingTool then
+                    notify("Missing Job", "You need to accept the Janitor job to use AutoFarm.", false)
+                    notifiedMissingTool = true
+                end
+                continue
+            else
+                notifiedMissingTool = false
+            end
+            if toolCount > 1 and not notifiedMultipleMops then
+                if inHandValid then
+                    notify("Multiple Mops Found", "Multiple mops detected. Using: " .. inHand.Name, true)
+                else
+                    notify("Multiple Mops Found", "Multiple mops found. Please choose one to use.", false)
+                    continue
+                end
+                notifiedMultipleMops = true
+            end
+            local selectedTool = inHandValid and inHand or tools[1]
+            if not selectedTool then continue end
+            local level = getLevel()
+            if level ~= lastLevel then
+                lastLevel = level
+                local types = getAllowedTypes(level)
+                notify("AutoFarm Info", "You're Janitor level " .. level .. " and farming: " .. table.concat(types, ", "), true)
+            end
+            local allowedTypes = getAllowedTypes(level)
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if not root then continue end
+            local closest = nil
+            local minDist = math.huge
+            for _, puddle in ipairs(puddlesFolder:GetChildren()) do
+                if puddle:IsA("BasePart") and puddle.Transparency < 1 then
+                    for _, t in ipairs(allowedTypes) do
+                        if puddle.Name == t then
+                            local dist = (puddle.Position - root.Position).Magnitude
+                            if dist < minDist then
+                                minDist = dist
+                                closest = puddle
+                            end
+                        end
+                    end
+                end
+            end
+            if closest then
+                if mode == "Character Walk" then
+                    walkToTarget(closest)
+                else
+                    tweenTo(closest.Position)
+                end
+                if not active then break end
+                firetouchinterest(root, closest, 0)
+                firetouchinterest(root, closest, 1)
+                if closest.Name == "LargePuddle" then
+                    task.wait(10)
+                else
+                    task.wait(6)
+                end
+            end
+        end
+        isFarming = false
+    end)
+end
+
+  
+local Toggle = Tab:CreateToggle({
+    Name = "ATM Auto Hack",
+    CurrentValue = false,
+    Flag = "ATM_Farm_Toggle",
+    Callback = function(Value)
+        AutoFarm = Value
+    end,
+})
+
+  Slider = Tab:CreateSlider({
+    Name = "Hack Delay (sec)",
+    Range = {0, 5},
+    Increment = 1,
+    Suffix = "s",
+    CurrentValue = 2,
+    Flag = "ATM_Farm_Delay",
+    Callback = function(Value)
+        DelayBetweenHacks = Value
+    end,
+})
+
+task.spawn(function()
+    while true do
+        if AutoFarm then
+            for _, atm in ATMModule.class.objects do
+                local model = atm.instance
+                if model and model:IsDescendantOf(workspace) then
+                    local isDisabled = atm.states.disabled:get()
+                    local isBeingHacked = atm.states.hacker:get() ~= nil
+                    local distance = (HRP().Position - model:GetPivot().Position).Magnitude
+                    if not isDisabled and not isBeingHacked and distance < 15 then
+                        local validTool
+                        for _, tool in HackTools do
+                            if ItemUtils.get_item_count(Data, "misc", tool.Name) > 0 then
+                                validTool = tool.Name
+                                break
+                            end
+                        end
+                        if validTool then
+                            Net.send("request_begin_hacking_2", model, validTool)
+                            SliderMinigame.enabled:set(true)
+                            repeat task.wait() until SliderMinigame.enabled:get()
+                            task.wait(1.5)
+                            local success = true
+                            SliderMinigame.enabled:set(false)
+                            if success then
+                                Net.send("atm_win_2", model)
+                            else
+                                Net.send("atm_fail_early", model)
+                            end
+                            task.wait(DelayBetweenHacks)
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+
+ 
+
+   
+  Tab = Window:CreateTab("MISC", nil)
+
+Tab:CreateParagraph({Title = "Watermarks", Content = "Fps | Ping"})
+
+local LastFPSPos_FpsPing = UDim2.new(0, 20, 0, 68)
+local LastPingPos_FpsPing = UDim2.new(0, 21, 0, 104)
+
+local FpsLabel_FpsPing = nil
+local PingLabel_FpsPing = nil
+
+local function CreateStatUI_FpsPing(statName_FpsPing, position_FpsPing, guiName_FpsPing)
+	local screenGui_FpsPing = Instance.new("ScreenGui")
+	screenGui_FpsPing.Name = guiName_FpsPing
+	screenGui_FpsPing.ResetOnSpawn = false
+	screenGui_FpsPing.IgnoreGuiInset = true
+	screenGui_FpsPing.Parent = game:GetService("CoreGui")
+
+	local frame_FpsPing = Instance.new("Frame")
+	frame_FpsPing.Name = "¥§§%$¥¥@§"
+	frame_FpsPing.Size = UDim2.new(0, 100, 0, 30)
+	frame_FpsPing.Position = position_FpsPing
+	frame_FpsPing.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	frame_FpsPing.BackgroundTransparency = 0.2
+	frame_FpsPing.Active = true
+	frame_FpsPing.Draggable = true
+	frame_FpsPing.Parent = screenGui_FpsPing
+
+	local uicorner_FpsPing = Instance.new("UICorner")
+	uicorner_FpsPing.CornerRadius = UDim.new(0, 8)
+	uicorner_FpsPing.Parent = frame_FpsPing
+
+	local gradient_FpsPing = Instance.new("UIGradient")
+	gradient_FpsPing.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 255))
+	}
+	gradient_FpsPing.Parent = frame_FpsPing
+
+	local textLabel_FpsPing = Instance.new("TextLabel")
+	textLabel_FpsPing.Name = "∞§§"
+	textLabel_FpsPing.Size = UDim2.new(1, 0, 1, 0)
+	textLabel_FpsPing.BackgroundTransparency = 1
+	textLabel_FpsPing.Text = statName_FpsPing .. ": 0"
+	textLabel_FpsPing.Font = Enum.Font.GothamSemibold
+	textLabel_FpsPing.TextColor3 = Color3.fromRGB(255, 255, 255)
+	textLabel_FpsPing.TextScaled = true
+	textLabel_FpsPing.Parent = frame_FpsPing
+
+	frame_FpsPing:GetPropertyChangedSignal("Position"):Connect(function()
+		if statName_FpsPing == "FPS" then
+			LastFPSPos_FpsPing = frame_FpsPing.Position
+		elseif statName_FpsPing == "PING" then
+			LastPingPos_FpsPing = frame_FpsPing.Position
+		end
+	end)
+
+	return textLabel_FpsPing
+end
+
+local RunService = game:GetService("RunService")
+local StatsService = game:GetService("Stats")
+local Heartbeat_FpsPing = RunService.Heartbeat
+local TimeBuffer_FpsPing = {}
+local LastUpdate_FpsPing = 0
+
+Tab:CreateToggle({
+	Name = "Show FPS",
+	CurrentValue = false,
+	Flag = "Fpsui",
+	Callback = function(state_FpsPing)
+		local guiName_FpsPing = "§FPS§UI§"
+		local existing_FpsPing = game.CoreGui:FindFirstChild(guiName_FpsPing)
+		if state_FpsPing then
+			if not existing_FpsPing then
+				FpsLabel_FpsPing = CreateStatUI_FpsPing("FPS", LastFPSPos_FpsPing, guiName_FpsPing)
+			end
+		else
+			if existing_FpsPing then
+				LastFPSPos_FpsPing = existing_FpsPing:FindFirstChildOfClass("Frame").Position
+				existing_FpsPing:Destroy()
+				FpsLabel_FpsPing = nil
+			end
+		end
+	end,
+})
+
+Tab:CreateToggle({
+	Name = "Show Ping ",
+	CurrentValue = false,
+	Flag = "PingUi",
+	Callback = function(state_FpsPing)
+		local guiName_FpsPing = "§PING§UI§"
+		local existing_FpsPing = game.CoreGui:FindFirstChild(guiName_FpsPing)
+		if state_FpsPing then
+			if not existing_FpsPing then
+				PingLabel_FpsPing = CreateStatUI_FpsPing("PING", LastPingPos_FpsPing, guiName_FpsPing)
+			end
+		else
+			if existing_FpsPing then
+				LastPingPos_FpsPing = existing_FpsPing:FindFirstChildOfClass("Frame").Position
+				existing_FpsPing:Destroy()
+				PingLabel_FpsPing = nil
+			end
+		end
+	end,
+})
+
+Heartbeat_FpsPing:Connect(function(deltaTime_FpsPing)
+	table.insert(TimeBuffer_FpsPing, tick())
+	while #TimeBuffer_FpsPing > 1 and tick() - TimeBuffer_FpsPing[1] > 1 do
+		table.remove(TimeBuffer_FpsPing, 1)
+	end
+	if tick() - LastUpdate_FpsPing >= 0.2 then
+		if FpsLabel_FpsPing then
+			FpsLabel_FpsPing.Text = "FPS: " .. tostring(#TimeBuffer_FpsPing)
+		end
+		if PingLabel_FpsPing then
+			local ping_FpsPing = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+			PingLabel_FpsPing.Text = "PING: " .. tostring(ping_FpsPing) .. "ms"
+		end
+		LastUpdate_FpsPing = tick()
+	end
+end)
+  
+Tab:CreateToggle({
+   Name = "Anti-AFK",
+   CurrentValue = false,
+   Flag = "Antiafk",
+   Callback = function(Value)
+       if Value then
+           afkConnection = lp.Idled:Connect(function()
+               VirtualUser:CaptureController()
+               VirtualUser:ClickButton2(Vector2.new())
+           end)
+       else
+           if afkConnection then
+               afkConnection:Disconnect()
+               afkConnection = nil
+           end
+       end
+   end,
+})
+
+Tab:CreateButton({
+   Name = "Low Server",
+   Callback = function()
+         Http = game:GetService("HttpService")
+         TPS = game:GetService("TeleportService")
+         Api = "https://games.roblox.com/v1/games/"
+         _place = game.PlaceId
+         _servers = Api.._place.."/servers/Public?sortOrder=Asc&limit=100"
+       function ListServers(cursor)
+          local Raw = game:HttpGet(_servers .. ((cursor and "&cursor="..cursor) or ""))
+          return Http:JSONDecode(Raw)
+       end
+       local Server, Next; repeat
+          local Servers = ListServers(Next)
+          Server = Servers.data[1]
+          Next = Servers.nextPageCursor
+       until Server
+       TPS:TeleportToPlaceInstance(_place,Server.id,game:GetService('Players').LocalPlayer)
+   end,
+})
+
+Tab:CreateDropdown({
+    Name = "Select Theme",
+    Options = {"Default", "AmberGlow", "Amethyst", "Bloom", "DarkBlue", "Green", "Light", "Ocean", "Serenity"},
+    CurrentOption = {"Default"},
+    MultipleOptions = false,
+    Flag = "ST",
+    Callback = function(Options)
+        local selectedTheme = Options[1]
+        if Window.ModifyTheme then
+            Window.ModifyTheme(selectedTheme)
+        end
+    end,
+})
+
+
+
+--[[Key Gen | Copy System Tracking stats]] 
+
+
+local HttpService = game:GetService("HttpService")
+
+ 
+local API_URL = "https://quickhacks-tracking-stats-service.vercel.app/api"
+local CURRENT_GAME = "blockspin"
+local UPDATE_INTERVAL = 30
+
+local player = Players.LocalPlayer
+local playerKey
+local sessionStart = tick()
+local lastUpdate = 0
+
+local function httpRequest(method, endpoint, data)
+	local ok, result = pcall(function()
+		return HttpService:RequestAsync({
+			Url = API_URL .. endpoint,
+			Method = method,
+			Headers = {["Content-Type"] = "application/json"},
+			Body = data and HttpService:JSONEncode(data) or nil
+		})
+	end)
+	if not ok or not result.Success then return false end
+	local decodeOk, body = pcall(function() return HttpService:JSONDecode(result.Body) end)
+	return decodeOk and body and body.success, body
+end
+
+local function getTextLabel(path)
+	local gui = player:WaitForChild("PlayerGui")
+	for _, name in ipairs(path) do
+		gui = gui:FindFirstChild(name)
+		if not gui then return nil end
+	end
+	return gui:IsA("TextLabel") and gui.Text or nil
+end
+
+local function getMoney()
+	local text = getTextLabel({"TopRightHud", "Holder", "Frame", "MoneyTextLabel"})
+	return text and tonumber(text:match("%$(%d+)")) or 0
+end
+
+local function getSkillLevel(skillName)
+	local gui = player:FindFirstChild("PlayerGui")
+	if not gui then return 0 end
+
+	local skills = gui:FindFirstChild("Skills")
+	if not skills then return 0 end
+
+	local holder = skills:FindFirstChild("SkillsHolder")
+	if not holder then return 0 end
+
+	local scroll = holder:FindFirstChild("SkillsScrollingFrame")
+	if not scroll then return 0 end
+
+	for _, btn in ipairs(scroll:GetChildren()) do
+		if btn:IsA("ImageButton") then
+			local label = btn:FindFirstChild("SkillTitle")
+			if label and label:IsA("TextLabel") then
+				local text = label.Text
+				if text:find(skillName) then
+					local level = tonumber(text:match("(%d+)%s*$"))
+					if level then return level end
+				end
+			end
+		end
+	end
+
+	return 0
+end
+
+local function getBankMoney()
+	local gui = player:FindFirstChild("PlayerGui")
+	if not gui then return 0 end
+	for _, screen in ipairs(gui:GetChildren()) do
+		if screen:IsA("ScreenGui") and screen:FindFirstChild("ATMCloseButton", true) then
+			for _, element in ipairs(screen:GetDescendants()) do
+				if element:IsA("TextLabel") and element.Text:match("Bank Balance:%s*%$%d+") then
+					local amount = tonumber(element.Text:match("%$(%d+)"))
+					if amount then return amount end
+				end
+			end
+		end
+	end
+	return 0
+end
+
+local function generateKey()
+	local payload = {
+		username = player.Name,
+		userId = player.UserId,
+		timestamp = os.time(),
+		game = CURRENT_GAME
+	}
+	local ok, data = httpRequest("POST", "/create-key", payload)
+	if ok and data and data.success then
+		playerKey = data.key
+		Rayfield:Notify({
+			Title = "QuickHacks Tracking Stats Service",
+			Content = "Generated Key! You can copy it in Misc Tab!! 😜🔥",
+			Duration = 6
+		})
+		
+		 Tab:CreateButton({
+			Name = "Copy QuickHacks Tracking Service Key",
+			Callback = function()
+				setclipboard(playerKey)
+				Rayfield:Notify({Title = "Copied", Content = "Key copied to clipboard!", Duration = 3})
+			end
+		})
+		return true
+	end
+	return false
+end
+
+local function updateStats()
+	if not playerKey then return end
+	local payload = {
+		playerKey = playerKey,
+		game = CURRENT_GAME,
+		username = player.Name,
+		money = getMoney(),
+		bankMoney = getBankMoney(),
+		level = getSkillLevel("Total Level"),
+		playtime = math.floor((tick() - sessionStart) / 60),
+		swipeLevel = getSkillLevel("Swiper"),
+		janitorLevel = getSkillLevel("Janitor"),
+		staminaLevel = getSkillLevel("Stamina"),
+		cookLevel = getSkillLevel("Cook"),
+		shelfStockerLevel = getSkillLevel("Shelf Stocker")
+	}
+	httpRequest("POST", "/update-stats", payload)
+end
+
+local function sttrack()
+	if generateKey() then
+		RunService.Heartbeat:Connect(function()
+			if tick() - lastUpdate >= UPDATE_INTERVAL then
+				updateStats()
+				lastUpdate = tick()
+			end
+		end)
+		task.wait(5)
+		updateStats()
+	end
+end
+
+sttrack()
