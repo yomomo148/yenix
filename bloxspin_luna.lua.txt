@@ -3,8 +3,8 @@
 local function CreateWindowWithTheme(theme)
     return Rayfield:CreateWindow({
         Name = "QuickHacks",
-        LoadingTitle = "BloxSpin",
-        LoadingSubtitle = "by oz",
+        LoadingTitle = "Blockspin",
+        LoadingSubtitle = "by yomo",
         Theme = theme,
         DisableRayfieldPrompts = true,
         DisableBuildWarnings = true,
