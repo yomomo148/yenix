@@ -18,9 +18,9 @@ local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
 local Window = WindUI:CreateWindow({
-    Title = "GODHUB๐” | v1  | ",
+    Title = "GODHUB๐”ฅ๐”ฅ | v1  | ",
     Icon = "menu",
-    Author = "",
+    Author = "เธเธฑเธ’เธเธฒเนเธ”เธขSUPPORTเธเธตเน59",
     Folder = "yomoHubFolder",
     Size = UDim2.fromOffset(400, 200),
     Theme = "Dark",
