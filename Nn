@@ -1,0 +1,191 @@
+--// Fluent Mobile Map Suite
+--// Features: Combat (Training Aim Helper), Map (Minimap), Teleport, Settings
+--// Fluent UI style: UICorner, UIStroke, semi-transparent, Gotham font
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- CONFIG
+local CONFIG = {
+    TrainingMode = true,
+    AimRange = 1000,
+    MinimapRange = 1000,
+    Waypoints = {
+        {name="Spawn", pos=Vector3.new(0,5,0)},
+        {name="Bank", pos=Vector3.new(200,5,50)},
+        {name="Cave", pos=Vector3.new(-300,-10,150)},
+    },
+    BotFolder = "NPCs"
+}
+
+-- STATE
+local Flags = {
+    ShowFOV = true,
+    AimFOV = 150,
+    LockHead = true,
+    ShowMinimap = true
+}
+
+-- UI Helper (Fluent components)
+local function CreateFluentFrame(parent, size, pos, titleText)
+    local Frame = Instance.new("Frame")
+    Frame.Size = size
+    Frame.Position = pos
+    Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    Frame.BackgroundTransparency = 0.15
+    Frame.Parent = parent
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.BorderSizePixel = 0
+
+    local corner = Instance.new("UICorner", Frame)
+    corner.CornerRadius = UDim.new(0, 12)
+
+    local stroke = Instance.new("UIStroke", Frame)
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(255,255,255)
+    stroke.Transparency = 0.85
+
+    local Title = Instance.new("TextLabel", Frame)
+    Title.Size = UDim2.new(1, -20, 0, 36)
+    Title.Position = UDim2.new(0, 10, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = titleText
+    Title.TextColor3 = Color3.fromRGB(255,255,255)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 20
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    return Frame
+end
+
+local function CreateFluentButton(parent, text, callback)
+    local Button = Instance.new("TextButton", parent)
+    Button.Size = UDim2.new(1, 0, 0, 40)
+    Button.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    Button.BackgroundTransparency = 0.1
+    Button.Text = text
+    Button.Font = Enum.Font.GothamSemibold
+    Button.TextSize = 16
+    Button.TextColor3 = Color3.fromRGB(255,255,255)
+    Button.BorderSizePixel = 0
+
+    local corner = Instance.new("UICorner", Button)
+    corner.CornerRadius = UDim.new(0, 10)
+
+    local stroke = Instance.new("UIStroke", Button)
+    stroke.Thickness = 1
+    stroke.Color = Color3.fromRGB(200,200,200)
+    stroke.Transparency = 0.6
+
+    Button.MouseButton1Click:Connect(function()
+        if callback then callback() end
+    end)
+
+    return Button
+end
+
+local function CreateFluentToggle(parent, text, init, callback)
+    local state = init
+    local btn = CreateFluentButton(parent, text .. (state and " : ON" or " : OFF"), function()
+        state = not state
+        btn.Text = text .. (state and " : ON" or " : OFF")
+        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,85) or Color3.fromRGB(50,50,50)
+        if callback then callback(state) end
+    end)
+    btn.BackgroundColor3 = state and Color3.fromRGB(0,170,85) or Color3.fromRGB(50,50,50)
+    return btn
+end
+
+-- MAIN GUI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "FluentSuite"
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = CreateFluentFrame(ScreenGui, UDim2.new(0, 280, 0, 380), UDim2.new(0.05,0,0.2,0), "Fluent Map Suite")
+
+-- Tabs
+local TabFrame = Instance.new("Frame", MainFrame)
+TabFrame.Size = UDim2.new(1, -20, 0, 32)
+TabFrame.Position = UDim2.new(0, 10, 0, 40)
+TabFrame.BackgroundTransparency = 1
+
+local ContentFrame = Instance.new("Frame", MainFrame)
+ContentFrame.Size = UDim2.new(1, -20, 1, -80)
+ContentFrame.Position = UDim2.new(0, 10, 0, 80)
+ContentFrame.BackgroundTransparency = 1
+
+local pages = {}
+local function CreatePage()
+    local Page = Instance.new("ScrollingFrame", ContentFrame)
+    Page.Size = UDim2.new(1,0,1,0)
+    Page.BackgroundTransparency = 1
+    Page.CanvasSize = UDim2.new(0,0,0,600)
+    Page.ScrollBarThickness = 6
+    local Layout = Instance.new("UIListLayout", Page)
+    Layout.Padding = UDim.new(0,8)
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Page.Visible = false
+    return Page
+end
+
+local function ShowPage(idx)
+    for i, p in ipairs(pages) do
+        p.Visible = (i == idx)
+    end
+end
+
+-- Tab Buttons
+local function CreateTab(name, idx)
+    local Button = CreateFluentButton(TabFrame, name, function() ShowPage(idx) end)
+    Button.Size = UDim2.new(0.24,0,1,0)
+    Button.Position = UDim2.new(0.25*(idx-1),0,0,0)
+end
+
+-- Pages
+local p1 = CreatePage() -- Combat
+local p2 = CreatePage() -- Map
+local p3 = CreatePage() -- Teleport
+local p4 = CreatePage() -- Settings
+pages = {p1,p2,p3,p4}
+ShowPage(1)
+
+CreateTab("Combat",1)
+CreateTab("Map",2)
+CreateTab("TP",3)
+CreateTab("Settings",4)
+
+-- Combat
+CreateFluentToggle(p1, "Training Mode", CONFIG.TrainingMode, function(v) CONFIG.TrainingMode = v end)
+CreateFluentToggle(p1, "Show FOV", Flags.ShowFOV, function(v) Flags.ShowFOV = v end)
+CreateFluentToggle(p1, "Lock Head", Flags.LockHead, function(v) Flags.LockHead = v end)
+
+-- Map
+CreateFluentToggle(p2, "Show Minimap", Flags.ShowMinimap, function(v) Flags.ShowMinimap = v end)
+
+-- Teleport
+for _, wp in ipairs(CONFIG.Waypoints) do
+    CreateFluentButton(p3, "Teleport: "..wp.name, function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(wp.pos)
+        end
+    end)
+end
+
+-- Settings
+CreateFluentToggle(p4, "Toggle UI", true, function(v)
+    MainFrame.Visible = v
+end)
+
+-- Minimap Frame
+local MiniGui = Instance.new("ScreenGui", game.CoreGui)
+MiniGui.Name = "FluentMinimap"
+local MapFrame = CreateFluentFrame(MiniGui, UDim2.new(0,200,0,200), UDim2.new(0.75,0,0.75,0), "Minimap")
+
+RunService.RenderStepped:Connect(function()
+    if not Flags.ShowMinimap then MapFrame.Visible = false return end
+    MapFrame.Visible = true
+end)
